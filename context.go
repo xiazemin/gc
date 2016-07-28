@@ -802,7 +802,6 @@ func (c *Context) stringBinOpShape(a, b Value, n Node) Type {
 	}
 
 	if !a.AssignableTo(b.Type()) && !b.AssignableTo(a.Type()) {
-		todo(n, true)
 		return nil
 	}
 

@@ -1807,6 +1807,10 @@ func (c *intConst) Convert(t Type) Value {
 		if d := c.representable(t); d != nil {
 			return newConstValue(d)
 		}
+
+		if c.Type().Kind() == Uintptr && t.Kind() == UnsafePointer {
+			return newRuntimeValue(t)
+		}
 	}
 
 	return nil

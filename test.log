@@ -231,9 +231,9 @@
 [PASS errorcheck] "convert|truncate": constant 1.5 truncated to integer testdata/gc/convlit.go:18:18
 [PASS errorcheck] "overflow": constant 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 overflows int testdata/gc/convlit.go:20:14
 [PASS errorcheck] "overflow": constant 1e+1000 overflows float32 testdata/gc/convlit.go:21:18
-[FAIL errorcheck: error does not match] "convert": constant 65 overflows unsafe.Pointer testdata/gc/convlit.go:24:31
-[FAIL errorcheck: error does not match] "convert": constant 65 overflows unsafe.Pointer testdata/gc/convlit.go:25:32
-[FAIL errorcheck: error does not match] "convert": constant 65 overflows unsafe.Pointer testdata/gc/convlit.go:26:28
+[PASS errorcheck] "convert": cannot convert unsafe.Pointer to type string testdata/gc/convlit.go:24:16
+[PASS errorcheck] "convert": cannot convert unsafe.Pointer to type float64 testdata/gc/convlit.go:25:17
+[PASS errorcheck] "convert": cannot convert unsafe.Pointer to type int testdata/gc/convlit.go:26:13
 [PASS errorcheck] "conver|incompatible|invalid|cannot": cannot use 1 (type int) as type string in assignment testdata/gc/convlit.go:30:19
 [PASS errorcheck] "conver|incompatible|invalid": invalid operation: mismatched types string and int testdata/gc/convlit.go:31:14
 [PASS errorcheck] "conver|incompatible|invalid": invalid operation: mismatched types string and int32 testdata/gc/convlit.go:32:14
@@ -978,12 +978,12 @@
 [FAIL errorcheck: missing error] "not enough arguments" testdata/gc/fixedbugs/issue7675.go:21:28
 [FAIL errorcheck: missing error] "too many arguments" testdata/gc/fixedbugs/issue7675.go:23:40
 [PASS errorcheck] "overflow": constant multiplication overflow testdata/gc/fixedbugs/issue7746.go:13:12
-[FAIL errorcheck: error does not match] "is not (a )?constant": constant 1 overflows unsafe.Pointer testdata/gc/fixedbugs/issue7760.go:15:26
-[FAIL errorcheck: error does not match] "is not (a )?constant": constant 1 overflows main.myPointer testdata/gc/fixedbugs/issue7760.go:16:21
-[FAIL errorcheck: error does not match] "is not (a )?constant": constant 1 overflows unsafe.Pointer testdata/gc/fixedbugs/issue7760.go:18:33
-[FAIL errorcheck: error does not match] "is not (a )?constant": constant 1 overflows main.myPointer testdata/gc/fixedbugs/issue7760.go:19:28
-[FAIL errorcheck: error does not match] "is not (a )?constant": constant 1 overflows unsafe.Pointer testdata/gc/fixedbugs/issue7760.go:21:34
-[FAIL errorcheck: error does not match] "is not (a )?constant": constant 1 overflows main.myPointer testdata/gc/fixedbugs/issue7760.go:22:29
+[PASS errorcheck] "is not (a )?constant": const initializer is not a constant testdata/gc/fixedbugs/issue7760.go:15:11
+[PASS errorcheck] "is not (a )?constant": const initializer is not a constant testdata/gc/fixedbugs/issue7760.go:16:11
+[FAIL errorcheck: error does not match] "is not (a )?constant": invalid constant type testdata/gc/fixedbugs/issue7760.go:18:11
+[FAIL errorcheck: error does not match] "is not (a )?constant": invalid constant type testdata/gc/fixedbugs/issue7760.go:19:11
+[PASS errorcheck] "is not (a )?constant": const initializer is not a constant testdata/gc/fixedbugs/issue7760.go:21:11
+[PASS errorcheck] "is not (a )?constant": const initializer is not a constant testdata/gc/fixedbugs/issue7760.go:22:11
 [PASS errorcheck] "is not (a )?constant": const initializer is not a constant testdata/gc/fixedbugs/issue7760.go:24:11
 [PASS errorcheck] "is not (a )?constant": const initializer is not a constant testdata/gc/fixedbugs/issue7760.go:25:11
 [FAIL errorcheck: missing error] "constant 256 overflows byte" testdata/gc/fixedbugs/issue8183.go:15:7

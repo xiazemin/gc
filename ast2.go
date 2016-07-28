@@ -1535,8 +1535,7 @@ func (n *PrimaryExpression) checkConversion(node Node, t Type, arg Value) {
 			case t.Kind() == Interface:
 				arg.Type().implementsFailed(ctx, node, "cannot convert %s to type %s:", t)
 			default:
-				//dbg("", arg.Type(), t)
-				todo(n, true)
+				ctx.err(node, "cannot convert %s to type %s", arg.Type(), t)
 			}
 		}
 	case TypeValue:
