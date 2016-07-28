@@ -381,7 +381,7 @@
 [PASS errorcheck] "cannot use|incompatible": cannot use 0 (type int) as type main.U in assignment testdata/gc/fixedbugs/bug197.go:16:11
 [PASS errorcheck] "cannot use|incompatible": cannot use type int as type main.U in assignment testdata/gc/fixedbugs/bug197.go:17:12
 [PASS errorcheck] "invalid operation|incompatible": invalid operation: mismatched types main.S and string testdata/gc/fixedbugs/bug197.go:24:12
-[FAIL errorcheck: missing error] "invalid operation|incompatible" testdata/gc/fixedbugs/bug197.go:25:30
+[PASS errorcheck] "invalid operation|incompatible": invalid operation: + (mismatched types string and main.S) testdata/gc/fixedbugs/bug197.go:25:26
 [PASS errorcheck] "undefined": undefined: T testdata/gc/fixedbugs/bug198.go:8:10
 [FAIL errorcheck: missing error] "duplicate" testdata/gc/fixedbugs/bug200.go:17:20
 [FAIL errorcheck: missing error] "non-integer slice index|must be integer" testdata/gc/fixedbugs/bug205.go:14:20

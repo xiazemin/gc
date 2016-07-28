@@ -463,6 +463,7 @@ Expression:
 |       Expression ">>" Expression
 |       Expression "<-" Expression
 
+/*yy:field	Value		Value */
 /*yy:field	lenPoisoned	bool */
 ExpressionOpt:
 	/* empty */

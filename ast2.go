@@ -503,7 +503,7 @@ func (*CompLitValue) check(ctx *context, n CompositeLiteralValue, t Type) (stop 
 						break
 					}
 
-					if !v.nonNegativeInteger() {
+					if v.Kind() != ConstValue || !v.nonNegativeInteger() {
 						if ctx.err(e, "index must be non-negative integer constant") {
 							return true
 						}
@@ -910,9 +910,12 @@ func (n *ExpressionOpt) check(ctx *context) (stop bool) {
 		return false
 	}
 
-	n.Expression.check(ctx)
+	if n.Expression.check(ctx) {
+		return true
+	}
+
 	n.lenPoisoned = n.Expression.lenPoisoned
-	todo(n)
+	n.Value = n.Expression.Value
 	return false
 }
 
@@ -1650,13 +1653,34 @@ func (n *PrimaryExpression) checkSelector(ctx *context, t Type, nm xc.Token) []S
 	panic("internal error")
 }
 
-func (n *PrimaryExpression) checkIndexExpr(ctx *context, o *ExpressionOpt) Value {
+func (n *PrimaryExpression) checkSliceIndex(ctx *context, o *ExpressionOpt) Value {
 	if o == nil {
 		return nil
 	}
 
-	todo(o)
-	return nil
+	if o.check(ctx) {
+		return nil
+	}
+
+	v := o.Value
+	if v == nil {
+		return nil
+	}
+
+	switch v.Kind() {
+	case ConstValue:
+	default:
+		//dbg("", v.Kind())
+		todo(n)
+		return nil
+	}
+
+	if !v.Type().Numeric() || !v.nonNegativeInteger() {
+		todo(n, true) // non-integer index
+		return nil
+	}
+
+	return v
 }
 
 func (n *PrimaryExpression) check(ctx *context) (stop bool) {
@@ -1955,15 +1979,9 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 			//dbg("", v.Kind())
 			todo(n)
 		}
-		l := n.checkIndexExpr(ctx, n.ExpressionOpt)
-		if l != nil {
-			todo(n) // check L
-		}
-		h := n.checkIndexExpr(ctx, n.ExpressionOpt2)
-		if h != nil {
-			todo(n) // check H
-		}
-		if l != nil && h != nil {
+		l := n.checkSliceIndex(ctx, n.ExpressionOpt)
+		h := n.checkSliceIndex(ctx, n.ExpressionOpt2)
+		if l != nil && h != nil && l.Kind() == ConstValue && h.Kind() == ConstValue {
 			todo(n) // check l <= H
 		}
 	case 8: // PrimaryExpression Call

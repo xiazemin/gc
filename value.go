@@ -123,6 +123,10 @@ type Value interface {
 	// See https://golang.org/ref/spec#Conversions
 	Convert(t Type) Value
 
+	// Integral reports whether the value is ∈ Z. It panics if the value is
+	// not numeric.
+	Integral() bool
+
 	// Kind returns the specific kind of this value.
 	Kind() ValueKind
 
@@ -162,6 +166,7 @@ func (v *valueBase) AssignableTo(Type) bool   { panic("AssignableTo of inappropr
 func (v *valueBase) Const() Const             { panic("Const of inappropriate value") }
 func (v *valueBase) Convert(Type) Value       { panic("internal error") }
 func (v *valueBase) Declaration() Declaration { return nil }
+func (v *valueBase) Integral() bool           { panic("Integral of non-numeric value") }
 func (v *valueBase) Kind() ValueKind          { return v.kind }
 func (v *valueBase) nonNegativeInteger() bool { return false }
 func (v *valueBase) Type() Type               { return nil }
@@ -292,6 +297,7 @@ func (v *constValue) div(n Node, op Value) Value     { return v.c.div(n, op) }
 func (v *constValue) eq(n Node, op Value) Value      { return v.c.eq(n, op) }
 func (v *constValue) ge(n Node, op Value) Value      { return v.c.ge(n, op) }
 func (v *constValue) gt(n Node, op Value) Value      { return v.c.gt(n, op) }
+func (v *constValue) Integral() bool                 { return v.c.Integral() }
 func (v *constValue) lsh(n Node, op Value) Value     { return v.c.lsh(n, op) }
 func (v *constValue) lt(n Node, op Value) Value      { return v.c.lt(n, op) }
 func (v *constValue) mod(n Node, op Value) Value     { return v.c.mod(n, op) }
@@ -408,6 +414,7 @@ func newSelectorValue(t Type, root Value, path0, path []Selector) Value {
 func (v *runtimeValue) Addressable() bool                         { return v.addressable }
 func (v *runtimeValue) AssignableTo(t Type) bool                  { return v.Type().AssignableTo(t) }
 func (v *runtimeValue) Declaration() Declaration                  { return v.d }
+func (v *runtimeValue) nonNegativeInteger() bool                  { return v.Type().Numeric() && v.Integral() }
 func (v *runtimeValue) Selector() (Value, []Selector, []Selector) { return v.root, v.path0, v.path }
 func (v *runtimeValue) Type() Type                                { return v.typ }
 
@@ -515,6 +522,14 @@ func (v *runtimeValue) eq(n Node, op Value) Value {
 		todo(n)
 	}
 	return nil
+}
+
+func (v *runtimeValue) Integral() bool {
+	if !v.Type().Numeric() {
+		panic("Integral of non-numeric value")
+	}
+
+	return v.Type().IntegerType() || v.Kind() == ConstValue && v.Const().Integral()
 }
 
 func (v *runtimeValue) lt(n Node, op Value) Value {
@@ -2411,7 +2426,25 @@ func (c *stringConst) normalize() Const                 { return c }
 func (c *stringConst) mustConvert(n Node, t Type) Const { return c.mustConvertConst(n, c, t) }
 
 func (c *stringConst) add(n Node, op Value) Value {
-	todo(n)
+	ctx := op.Type().context()
+	switch op.Kind() {
+	//case ConstValue:
+	//	t, untyped, a, b := ctx.constStringBinOpShape(c, op.Const(), n)
+	//	if t != nil {
+	//		if d := a.eq0(n, t, untyped, b); d != nil {
+	//			return newConstValue(d)
+	//		}
+	//	}
+	case RuntimeValue:
+		if t := ctx.stringBinOpShape(newConstValue(c), op, n); t != nil {
+			return newRuntimeValue(t)
+		}
+
+		ctx.err(n, "invalid operation: + (mismatched types %s and %s)", c.Type(), op.Type())
+	default:
+		//dbg("", op.Kind())
+		todo(n)
+	}
 	return nil
 }
 
@@ -2432,7 +2465,7 @@ func (c *stringConst) eq(n Node, op Value) Value {
 	ctx := op.Type().context()
 	switch op.Kind() {
 	case ConstValue:
-		t, untyped, a, b := ctx.arithmeticBinOpShape(c, op.Const(), n)
+		t, untyped, a, b := ctx.constStringBinOpShape(c, op.Const(), n)
 		if t != nil {
 			if d := a.eq0(n, t, untyped, b); d != nil {
 				return newConstValue(d)

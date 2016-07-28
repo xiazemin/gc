@@ -548,6 +548,7 @@ var untypedArithmeticBinOpTab = [maxKind][maxKind]Kind{
 	Int32:      {Int: Int32, Int32: Int32},
 	Float64:    {Int: Float64, Int32: Float64, Float64: Float64},
 	Complex128: {Int: Complex128, Int32: Complex128, Float64: Complex128, Complex128: Complex128},
+	String:     {String: String},
 }
 
 func (c *Context) untypedArithmeticBinOpType(a, b Type) Type {
@@ -713,23 +714,20 @@ func (c *Context) mustConvertNil(n Node, t Type) (stop bool) {
 }
 
 func (c *Context) constBooleanBinOpShape(a, b Const, n Node) (Type, bool /* untyped*/, Const, Const) {
+	if a.Kind() != BoolConst {
+		todo(n, true) // need bool
+		return nil, false, nil, nil
+	}
+
+	if b.Kind() != BoolConst {
+		todo(n, true) // need bool
+		return nil, false, nil, nil
+	}
+
 	switch {
 	case a.Untyped():
 		switch {
 		case b.Untyped():
-			fail := false
-			if a.Kind() != BoolConst {
-				fail = true
-				todo(n, true) // need bool
-			}
-			if b.Kind() != BoolConst {
-				fail = true
-				todo(n, true) // need bool
-			}
-			if fail {
-				break
-			}
-
 			return c.boolType, true, a, b
 		default: // a.Untyped && !b.Untyped
 			todo(n)
@@ -769,4 +767,44 @@ func (c *Context) booleanBinOpShape(a, b Type, n Node) Type {
 		todo(n, true) // invalid operand
 	}
 	return nil
+}
+
+func (c *Context) constStringBinOpShape(a, b Const, n Node) (Type, bool /* untyped*/, Const, Const) {
+	if a.Kind() != StringConst {
+		todo(n, true) // need string
+		return nil, false, nil, nil
+	}
+
+	if b.Kind() != StringConst {
+		todo(n, true) // need string
+		return nil, false, nil, nil
+	}
+
+	switch {
+	case a.Untyped():
+		switch {
+		case b.Untyped():
+			return c.stringType, true, a, b
+		default: // a.Untyped && !b.Untyped
+			todo(n)
+		}
+	case b.Untyped(): // !a.Untyped() && b.Untyped()
+		return a.Type(), false, a, b.mustConvert(nil, a.Type()) // Cannot fail.
+	default: // !a.Untyped() && !b.Untyped()
+		todo(n)
+	}
+	return nil, false, nil, nil
+}
+
+func (c *Context) stringBinOpShape(a, b Value, n Node) Type {
+	if a.Type().Kind() != String {
+		panic("internal error")
+	}
+
+	if !a.AssignableTo(b.Type()) && !b.AssignableTo(a.Type()) {
+		todo(n, true)
+		return nil
+	}
+
+	return a.Type()
 }
