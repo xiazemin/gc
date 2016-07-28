@@ -548,7 +548,6 @@ var untypedArithmeticBinOpTab = [maxKind][maxKind]Kind{
 	Int32:      {Int: Int32, Int32: Int32},
 	Float64:    {Int: Float64, Int32: Float64, Float64: Float64},
 	Complex128: {Int: Complex128, Int32: Complex128, Float64: Complex128, Complex128: Complex128},
-	String:     {String: String},
 }
 
 func (c *Context) untypedArithmeticBinOpType(a, b Type) Type {
