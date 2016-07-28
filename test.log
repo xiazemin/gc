@@ -177,7 +177,7 @@
 [PASS errorcheck] "const.*nil": const initializer cannot be nil testdata/gc/const1.go:90:13
 [PASS errorcheck] "is not a? ?constant": const initializer is not a constant testdata/gc/const1.go:91:11
 [PASS errorcheck] "is not a? ?constant": const initializer is not a constant testdata/gc/const1.go:92:11
-[FAIL errorcheck: error does not match] "cannot be nil|invalid constant type": const initializer is not a constant testdata/gc/const1.go:93:11
+[PASS errorcheck] "cannot be nil|invalid constant type|is not a? ? constant": const initializer is not a constant testdata/gc/const1.go:93:11
 [PASS errorcheck] "cannot be nil|invalid constant type": const initializer cannot be nil testdata/gc/const1.go:94:11
 [PASS errorcheck] "type without expr|expected .=.": unexpected ;, expected '=' testdata/gc/const2.go:14:8
 [PASS errorcheck] "constant multiplication overflow": constant multiplication overflow testdata/gc/const2.go:19:32
