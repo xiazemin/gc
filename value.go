@@ -123,6 +123,9 @@ type Value interface {
 	// See https://golang.org/ref/spec#Conversions
 	Convert(t Type) Value
 
+	// Declaration returns the declaration a value refers to, if any.
+	Declaration() Declaration
+
 	// Integral reports whether the value is ∈ Z. It panics if the value is
 	// not numeric.
 	Integral() bool
@@ -130,8 +133,9 @@ type Value interface {
 	// Kind returns the specific kind of this value.
 	Kind() ValueKind
 
-	// Declaration returns the declaration a value refers to, if any.
-	Declaration() Declaration
+	// Nil reports whether the value is nil. Nil panics if the value's Kind not NilValue
+	// and the value's Type is not Ptr.
+	Nil() bool
 
 	// Selector returns the root value of a selector and its paths or (nil,
 	// nil, nil) of the value does not represent a selector. It panics if
@@ -168,6 +172,7 @@ func (v *valueBase) Convert(Type) Value       { panic("internal error") }
 func (v *valueBase) Declaration() Declaration { return nil }
 func (v *valueBase) Integral() bool           { panic("Integral of non-numeric value") }
 func (v *valueBase) Kind() ValueKind          { return v.kind }
+func (v *valueBase) Nil() bool                { panic("Nil of inappropriate value") }
 func (v *valueBase) nonNegativeInteger() bool { return false }
 func (v *valueBase) Type() Type               { return nil }
 
@@ -318,6 +323,8 @@ type nilValue struct{ valueBase }
 
 func newNilValue() *nilValue { return &nilValue{valueBase{NilValue}} }
 
+func (v *nilValue) Nil() bool { return true }
+
 func (v *nilValue) AssignableTo(t Type) bool {
 	switch t.Kind() {
 	case Ptr, Func, Slice, Map, Chan, Interface:
@@ -329,7 +336,9 @@ func (v *nilValue) AssignableTo(t Type) bool {
 
 func (v *nilValue) Convert(u Type) Value {
 	switch u.Kind() {
-	case Ptr, Func, Slice, Map, Chan, Interface:
+	case Ptr:
+		return newNilPtrValue(u)
+	case Func, Slice, Map, Chan, Interface:
 		return newRuntimeValue(u)
 	}
 
@@ -352,8 +361,9 @@ func (v *packageValue) Declaration() Declaration { return v.d }
 type runtimeValue struct {
 	addressable bool
 	d           Declaration
-	path0       []Selector
+	nil         bool
 	path        []Selector
+	path0       []Selector
 	root        Value
 	typ         Type
 	valueBase
@@ -408,6 +418,18 @@ func newSelectorValue(t Type, root Value, path0, path []Selector) Value {
 		root:        root,
 		typ:         t,
 		valueBase:   valueBase{RuntimeValue},
+	}
+}
+
+func newNilPtrValue(t Type) *runtimeValue {
+	if t.Kind() != Ptr && t.Kind() != UnsafePointer {
+		panic("internal error")
+	}
+
+	return &runtimeValue{
+		nil:       true,
+		typ:       t,
+		valueBase: valueBase{RuntimeValue},
 	}
 }
 
@@ -470,6 +492,10 @@ func (v *runtimeValue) Convert(u Type) Value {
 			return newRuntimeValue(u)
 		}
 	case u.Kind() == UnsafePointer:
+		if t.Kind() == Ptr && v.Nil() {
+			return newNilPtrValue(u)
+		}
+
 		if t.Kind() == Ptr || t.Kind() == Uintptr {
 			return newRuntimeValue(u)
 		}
@@ -642,6 +668,14 @@ func (v *runtimeValue) neq(n Node, op Value) Value {
 		todo(n)
 	}
 	return nil
+}
+
+func (v *runtimeValue) Nil() bool {
+	if v.Type().Kind() != Ptr {
+		panic("internal error")
+	}
+
+	return v.nil
 }
 
 func (v *runtimeValue) or(n Node, op Value) Value {

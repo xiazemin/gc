@@ -385,8 +385,8 @@ func (n *ConstDeclaration) check(ctx *context) (stop bool) {
 		case NilValue:
 			ctx.err(n.expr, "const initializer cannot be nil")
 		default:
-			if t := v.Type(); t != nil && t.Kind() == Ptr {
-				ctx.err(n.expr, "invalid constant type")
+			if t := v.Type(); t != nil && t.Kind() == Ptr && v.Nil() {
+				ctx.err(n.expr, "const initializer cannot be nil")
 				break
 			}
 
