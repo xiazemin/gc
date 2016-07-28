@@ -417,8 +417,8 @@
 [FAIL errorcheck: missing error] "not used" testdata/gc/fixedbugs/bug240.go:9:19
 [FAIL errorcheck: missing error] "undefined" testdata/gc/fixedbugs/bug240.go:13:28
 [FAIL errorcheck: missing error] "String" testdata/gc/fixedbugs/bug241.go:10:20
-[FAIL errorcheck: missing error] "chan|incompatible" testdata/gc/fixedbugs/bug249.go:10:53
-[FAIL errorcheck: missing error] "chan|incompatible" testdata/gc/fixedbugs/bug249.go:26:53
+[PASS errorcheck] "chan|incompatible": cannot use type chan <-chan int as type chan<- chan int in assignment testdata/gc/fixedbugs/bug249.go:10:27
+[PASS errorcheck] "chan|incompatible": cannot use type chan<- chan int as type chan <-chan int in assignment testdata/gc/fixedbugs/bug249.go:26:28
 [PASS errorcheck] "loop|interface": interface type loop involving I1 testdata/gc/fixedbugs/bug251.go:15:2
 [FAIL errorcheck: extra error] cannot use type main.I2 as type main.I1 in assignment:\n\tmain.I2 does not implement main.I1 (missing m method) testdata/gc/fixedbugs/bug251.go:19:13
 [FAIL errorcheck: missing error] "cannot use|incompatible" testdata/gc/fixedbugs/bug252.go:14:10

@@ -2716,7 +2716,11 @@ func (n *TypeLiteral) check(ctx *context) (stop bool) {
 
 		n.Type = n.ArrayType.Type
 	case 2: // ChanType
-		todo(n)
+		if n.ChanType.check(ctx) {
+			return true
+		}
+
+		n.Type = n.ChanType.Type
 	case 3: // FuncType
 		todo(n)
 	case 4: // InterfaceType
