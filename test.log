@@ -237,8 +237,8 @@
 [PASS errorcheck] "conver|incompatible|invalid|cannot": cannot use 1 (type int) as type string in assignment testdata/gc/convlit.go:30:19
 [PASS errorcheck] "conver|incompatible|invalid": invalid operation: mismatched types string and int testdata/gc/convlit.go:31:14
 [PASS errorcheck] "conver|incompatible|invalid": invalid operation: mismatched types string and int32 testdata/gc/convlit.go:32:14
-[FAIL errorcheck: missing error] "literals|incompatible|convert|invalid" testdata/gc/convlit.go:33:22
-[FAIL errorcheck: missing error] "literals|incompatible|convert|invalid" testdata/gc/convlit.go:34:22
+[PASS errorcheck] "literals|incompatible|convert|invalid": invalid operation: + (mismatched types string and int) testdata/gc/convlit.go:33:16
+[PASS errorcheck] "literals|incompatible|convert|invalid": invalid operation: + (mismatched types string and int32) testdata/gc/convlit.go:34:16
 [PASS errorcheck] "convert|truncate": constant 1.5 truncated to integer testdata/gc/convlit.go:36:16
 [PASS errorcheck] "overflow": constant 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 overflows int testdata/gc/convlit.go:37:16
 [PASS errorcheck] "overflow": constant 1e+200 overflows float32 testdata/gc/convlit.go:38:20

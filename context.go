@@ -771,12 +771,10 @@ func (c *Context) booleanBinOpShape(a, b Type, n Node) Type {
 
 func (c *Context) constStringBinOpShape(a, b Const, n Node) (Type, bool /* untyped*/, Const, Const) {
 	if a.Kind() != StringConst {
-		todo(n, true) // need string
 		return nil, false, nil, nil
 	}
 
 	if b.Kind() != StringConst {
-		todo(n, true) // need string
 		return nil, false, nil, nil
 	}
 

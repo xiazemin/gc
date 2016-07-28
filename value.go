@@ -2466,23 +2466,20 @@ func (c *stringConst) mustConvert(n Node, t Type) Const { return c.mustConvertCo
 func (c *stringConst) add(n Node, op Value) Value {
 	ctx := op.Type().context()
 	switch op.Kind() {
-	//case ConstValue:
-	//	t, untyped, a, b := ctx.constStringBinOpShape(c, op.Const(), n)
-	//	if t != nil {
-	//		if d := a.eq0(n, t, untyped, b); d != nil {
-	//			return newConstValue(d)
-	//		}
-	//	}
+	case ConstValue:
+		t, untyped, a, b := ctx.constStringBinOpShape(c, op.Const(), n)
+		if t != nil {
+			return newConstValue(newStringConst(a.(*stringConst).val.cat(b.(*stringConst).val), t, untyped))
+		}
 	case RuntimeValue:
 		if t := ctx.stringBinOpShape(newConstValue(c), op, n); t != nil {
 			return newRuntimeValue(t)
 		}
-
-		ctx.err(n, "invalid operation: + (mismatched types %s and %s)", c.Type(), op.Type())
 	default:
 		//dbg("", op.Kind())
 		todo(n)
 	}
+	ctx.err(n, "invalid operation: + (mismatched types %s and %s)", c.Type(), op.Type())
 	return nil
 }
 
