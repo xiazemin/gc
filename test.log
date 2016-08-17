@@ -390,9 +390,9 @@
 [PASS errorcheck] "undefined": undefined: f testdata/gc/fixedbugs/bug208.go:17:9
 [FAIL errorcheck: missing error] "bool" testdata/gc/fixedbugs/bug209.go:11:21
 [FAIL errorcheck: missing error] "duplicate" testdata/gc/fixedbugs/bug211.go:11:27
-[FAIL errorcheck: missing error] "cannot|illegal|incompatible|wrong" testdata/gc/fixedbugs/bug212.go:10:34
+[PASS errorcheck] "cannot|illegal|incompatible|wrong": cannot use type map[int]int as type map[main.I]int in field value testdata/gc/fixedbugs/bug212.go:10:13
 [PASS errorcheck] "cannot|illegal|incompatible|wrong": cannot use type map[int]int as type map[main.I]int in assignment testdata/gc/fixedbugs/bug212.go:11:20
-[FAIL errorcheck: missing error] "cannot|illegal|incompatible|wrong" testdata/gc/fixedbugs/bug212.go:12:34
+[PASS errorcheck] "cannot|illegal|incompatible|wrong": cannot use type map[uint]int as type map[main.I]int in field value testdata/gc/fixedbugs/bug212.go:12:13
 [FAIL errorcheck: missing error] "fallthrough" testdata/gc/fixedbugs/bug213.go:12:17
 [PASS errorcheck] "recursive": invalid recursive type A testdata/gc/fixedbugs/bug215.go:12:21
 [PASS errorcheck] "no receiver": method has no receiver testdata/gc/fixedbugs/bug217.go:12:6

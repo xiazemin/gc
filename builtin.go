@@ -189,8 +189,8 @@ func builtinMake(ctx *context, call *Call) Value {
 		}
 
 		switch v.Kind() {
-		//TODO check v is nonNegativeInteger()
 		default:
+			//dbg("", v.Kind())
 			todo(call.ArgumentList.node(i))
 		}
 	}
@@ -208,11 +208,15 @@ func builtinMake(ctx *context, call *Call) Value {
 		case Map:
 			if kt := t.Key(); kt != nil && !kt.Comparable() {
 				todo(call, true) // invalid key type
+				break
 			}
 
 			if len(args) > 2 {
 				todo(call.ArgumentList.node(2), true) // too many args
+				break
 			}
+
+			return newRuntimeValue(t)
 		case Slice:
 			todo(call)
 		default:

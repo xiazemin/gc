@@ -737,7 +737,9 @@ func (*CompLitValue) check(ctx *context, n CompositeLiteralValue, t Type) (stop 
 
 					f := t.Field(int(index))
 					if v != nil && f.Type != nil && !v.AssignableTo(f.Type) {
-						todo(val, true) // assign fail
+						if ctx.err(val, "cannot use type %s as type %s in field value", v.Type(), f.Type) {
+							return true
+						}
 					}
 					index++
 				}
