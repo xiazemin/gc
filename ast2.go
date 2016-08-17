@@ -231,6 +231,17 @@ func (n *ArrayType) check(ctx *context) (stop bool) {
 	return stop
 }
 
+// ----------------------------------------------------------------- Assignment
+
+func (n *Assignment) check(ctx *context) (stop bool) {
+	if n == nil {
+		return false
+	}
+
+	todo(n)
+	return false
+}
+
 // ---------------------------------------------------------------------- Block
 
 func (n *Block) check(ctx *context) (stop bool) {
@@ -771,6 +782,14 @@ loop:
 
 // ----------------------------------------------------------------- Expression
 
+func (n *Expression) isCall() bool {
+	if n.Case != 0 {
+		return false
+	}
+
+	return n.UnaryExpression.isCall()
+}
+
 func (n *Expression) isIdentifier() (xc.Token, bool) {
 	if n.Case != 0 {
 		return xc.Token{}, false
@@ -879,6 +898,10 @@ func (n *Expression) ident() (t xc.Token) {
 // ------------------------------------------------------------- ExpressionList
 
 func (n *ExpressionList) check(ctx *context) (stop bool) {
+	if n == nil {
+		return false
+	}
+
 	if len(n.list) != 0 {
 		panic("internal error")
 	}
@@ -2182,6 +2205,10 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 	return false
 }
 
+func (n *PrimaryExpression) isCall() bool {
+	return n.Case == 8 // PrimaryExpression Call
+}
+
 func (n *PrimaryExpression) isIdentifier() (xc.Token, bool) {
 	if n.Case != 0 { // Operand
 		return xc.Token{}, false
@@ -2432,6 +2459,46 @@ func (n *Signature) check(ctx *context) (stop bool) {
 	return false
 }
 
+// ------------------------------------------------------------ SimpleStatement
+
+func (n *SimpleStatement) check(ctx *context) (stop bool) {
+	if n == nil {
+		return false
+	}
+
+	if n.Assignment.check(ctx) ||
+		n.Expression.check(ctx) ||
+		n.ExpressionList.check(ctx) ||
+		n.ExpressionList2.check(ctx) {
+		return true
+	}
+
+	switch n.Case {
+	case 0: // Assignment
+		todo(n)
+	case 1: // Expression
+		v := n.Expression.Value
+		if v == nil {
+			break
+		}
+
+		if isVoid(v.Type()) || n.Expression.isCall() {
+			break
+		}
+
+		todo(n, true) // unused value
+	case 2: // Expression "--"
+		todo(n)
+	case 3: // Expression "++"
+		todo(n)
+	case 4: // ExpressionList ":=" ExpressionList
+		todo(n)
+	default:
+		panic("internal error")
+	}
+	return false
+}
+
 // ------------------------------------------------------------------ SliceType
 
 func (n *SliceType) check(ctx *context) (stop bool) {
@@ -2554,7 +2621,7 @@ func (n *StatementNonDecl) check(ctx *context) (stop bool) {
 	case 10: // SelectStatement
 		todo(n)
 	case 11: // SimpleStatement
-		todo(n)
+		return n.SimpleStatement.check(ctx)
 	case 12: // SwitchStatement
 		todo(n)
 	default:
@@ -2649,6 +2716,7 @@ func (n *StructType) check(ctx *context) (stop bool) {
 		sort.Sort(a)
 		sf := make([]StructField, 0, len(a))
 		var mta []Method
+		var fix *Type
 		for _, f := range a {
 			if f.check(ctx) {
 				return true
@@ -2666,11 +2734,18 @@ func (n *StructType) check(ctx *context) (stop bool) {
 					var mt2 Method
 					switch {
 					case ft.Kind() == Interface:
-						todo(zeroNode) // Merge interface method, must synthesize new method w/ receiver.
+						// Merge interface method, must synthesize new method w/ receiver.
+						mt2 = *mt
+						in := []Type{nil}
+						for i := 0; i < mt.Type.NumIn(); i++ {
+							in = append(in, mt.Type.In(i))
+						}
+						fix = &in[0]
+						mt2.Type = newFuncType(ctx, mt.Name, in, mt.Type.Result(), isExported(mt.Name), mt.Type.IsVariadic())
 					default:
 						mt2 = *mt
-						mt2.merged = true
 					}
+					mt2.merged = true
 					mt2.Index = len(mta)
 					mta = append(mta, mt2)
 				}
@@ -2699,6 +2774,9 @@ func (n *StructType) check(ctx *context) (stop bool) {
 			})
 		}
 		n.Type = newStructType(ctx, sf, mta)
+		if fix != nil {
+			*fix = n.Type
+		}
 	default:
 		panic("internal error")
 	}
@@ -2833,6 +2911,14 @@ func (n *TypeLiteral) check(ctx *context) (stop bool) {
 }
 
 // ------------------------------------------------------------ UnaryExpression
+
+func (n *UnaryExpression) isCall() bool {
+	if n.Case != 7 { // PrimaryExpression
+		return false
+	}
+
+	return n.PrimaryExpression.isCall()
+}
 
 func (n *UnaryExpression) isIdentifier() (xc.Token, bool) {
 	if n.Case != 7 { // PrimaryExpression
