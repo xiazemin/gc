@@ -1545,29 +1545,96 @@ func (n *PrimaryExpression) checkConversion(node Node, t Type, arg Value) {
 	}
 }
 
+func (n *PrimaryExpression) variadicParam(ft Type, i int) Type {
+	if n := ft.NumIn(); ft.IsVariadic() && i >= n-1 {
+		return ft.In(n - 1).Elem()
+	}
+
+	return ft.In(i)
+}
+
 func (n *PrimaryExpression) checkCall(ctx *context, ft Type, skip int) (stop bool) {
 	if ft == nil {
 		return false
 	}
 
+	const (
+		variadic = 1 << iota
+		dots
+		tuple
+	)
+
 	args, _, ddd := n.Call.args()
-	switch {
-	case ft.IsVariadic():
-		todo(n)
-	default:
-		if len(args) != ft.NumIn()-skip {
-			todo(n) //TODO special case single tuple arg.
-		}
-		if ddd {
-			todo(n)
-		}
-		for i, arg := range args {
-			if arg != nil && !arg.AssignableTo(ft.In(i+skip)) {
-				todo(n)
+	var flags int
+	if ft.IsVariadic() {
+		flags |= variadic
+	}
+	if ddd {
+		flags |= dots
+	}
+	if len(args) == 1 {
+		arg := args[0]
+		if arg != nil && arg.Kind() != NilValue {
+			if t := arg.Type(); t != nil && t.Kind() == Tuple {
+				flags |= tuple
 			}
 		}
 	}
 
+	in := ft.NumIn()
+	switch flags {
+	case variadic:
+		if len(args) < in-1-skip {
+			todo(n, true)
+			break
+		}
+
+		for i, arg := range args {
+			if arg != nil && !arg.AssignableTo(n.variadicParam(ft, i+skip)) {
+				ctx.valueAssignmentFail(n.Call.ArgumentList.node(i), n.variadicParam(ft, i+skip), arg)
+			}
+		}
+	case dots:
+		todo(n)
+	case dots | variadic:
+		todo(n)
+	case tuple:
+		todo(n)
+	case tuple | variadic:
+		args := args[0].Type().Elements()
+		if len(args) < in-1-skip {
+			todo(n, true)
+			break
+		}
+
+		for i, arg := range args {
+			if arg != nil && !arg.AssignableTo(n.variadicParam(ft, i+skip)) {
+				todo(n, true)
+			}
+		}
+	case tuple | dots:
+		todo(n)
+	case tuple | dots | variadic:
+		todo(n)
+		ctx.err(n.Call.ArgumentList.node(0), "multiple-value in single-value context")
+	default:
+	}
+	//TODO- switch {
+	//TODO- case ft.IsVariadic():
+	//TODO- 	todo(n)
+	//TODO- default:
+	//TODO- 	if len(args) != ft.NumIn()-skip {
+	//TODO- 		todo(n) //TODO special case single tuple arg.
+	//TODO- 	}
+	//TODO- 	if ddd {
+	//TODO- 		todo(n)
+	//TODO- 	}
+	//TODO- 	for i, arg := range args {
+	//TODO- 		if arg != nil && !arg.AssignableTo(ft.In(i+skip)) {
+	//TODO- 			todo(n)
+	//TODO- 		}
+	//TODO- 	}
+	//TODO- }
 	n.Value = newRuntimeValue(ft.Result())
 	return false
 }

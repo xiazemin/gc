@@ -251,10 +251,10 @@
 [PASS errorcheck] "conver|incompatible|cannot": cannot use "a" (type string) as type int in array or slice literal testdata/gc/convlit1.go:12:17
 [PASS errorcheck] "compos": invalid type for composite literal: int testdata/gc/convlit1.go:13:13
 [FAIL errorcheck: missing error] "conver|incompatible|invalid" testdata/gc/convlit1.go:19:15
-[FAIL errorcheck: missing error] "integer" testdata/gc/ddd1.go:20:20
-[FAIL errorcheck: missing error] ".hello. .type string. as type int|incompatible" testdata/gc/ddd1.go:21:20
-[FAIL errorcheck: missing error] "\[\]int literal.*as type int|incompatible" testdata/gc/ddd1.go:22:20
-[FAIL errorcheck: missing error] "multiple-value|[.][.][.]" testdata/gc/ddd1.go:30:22
+[PASS errorcheck] "integer": constant 1.5 truncated to integer testdata/gc/ddd1.go:20:10
+[PASS errorcheck] ".hello. .type string. as type int|incompatible": cannot use "hello" (type string) as type int in assignment testdata/gc/ddd1.go:21:10
+[PASS errorcheck] "\[\]int (literal)?.*as type int|incompatible": cannot use type []int as type int in assignment testdata/gc/ddd1.go:22:10
+[PASS errorcheck] "multiple-value|[.][.][.]": multiple-value in single-value context testdata/gc/ddd1.go:30:10
 [FAIL errorcheck: missing error] "multiple-value|[.][.][.]" "not enough" testdata/gc/ddd1.go:32:23
 [FAIL errorcheck: missing error] "[.][.][.]" testdata/gc/ddd1.go:46:23
 [FAIL errorcheck: missing error] "[.][.][.]" testdata/gc/ddd1.go:47:19
