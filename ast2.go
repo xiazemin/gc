@@ -1599,7 +1599,17 @@ func (n *PrimaryExpression) checkCall(ctx *context, ft Type, skip int) (stop boo
 	case dots | variadic:
 		todo(n)
 	case tuple:
-		todo(n)
+		args := args[0].Type().Elements()
+		if len(args) < in-1-skip {
+			todo(n, true)
+			break
+		}
+
+		for i, arg := range args {
+			if arg != nil && !arg.AssignableTo(ft.In(i+skip)) {
+				todo(n, true)
+			}
+		}
 	case tuple | variadic:
 		args := args[0].Type().Elements()
 		if len(args) < in-1-skip {
@@ -1613,9 +1623,8 @@ func (n *PrimaryExpression) checkCall(ctx *context, ft Type, skip int) (stop boo
 			}
 		}
 	case tuple | dots:
-		todo(n)
+		fallthrough
 	case tuple | dots | variadic:
-		todo(n)
 		ctx.err(n.Call.ArgumentList.node(0), "multiple-value in single-value context")
 	default:
 	}

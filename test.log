@@ -255,7 +255,7 @@
 [PASS errorcheck] ".hello. .type string. as type int|incompatible": cannot use "hello" (type string) as type int in assignment testdata/gc/ddd1.go:21:10
 [PASS errorcheck] "\[\]int (literal)?.*as type int|incompatible": cannot use type []int as type int in assignment testdata/gc/ddd1.go:22:10
 [PASS errorcheck] "multiple-value|[.][.][.]": multiple-value in single-value context testdata/gc/ddd1.go:30:10
-[FAIL errorcheck: missing error] "multiple-value|[.][.][.]" "not enough" testdata/gc/ddd1.go:32:23
+[PASS errorcheck] "multiple-value|[.][.][.]" "not enough": multiple-value in single-value context testdata/gc/ddd1.go:32:11
 [FAIL errorcheck: missing error] "[.][.][.]" testdata/gc/ddd1.go:46:23
 [FAIL errorcheck: missing error] "[.][.][.]" testdata/gc/ddd1.go:47:19
 [FAIL errorcheck: missing error] "[.][.][.]" testdata/gc/ddd1.go:49:15
