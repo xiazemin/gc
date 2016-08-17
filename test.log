@@ -422,8 +422,8 @@
 [PASS errorcheck] "loop|interface": interface type loop involving I1 testdata/gc/fixedbugs/bug251.go:15:2
 [FAIL errorcheck: extra error] cannot use type main.I2 as type main.I1 in assignment:\n\tmain.I2 does not implement main.I1 (missing m method) testdata/gc/fixedbugs/bug251.go:19:13
 [FAIL errorcheck: missing error] "cannot use|incompatible" testdata/gc/fixedbugs/bug252.go:14:10
-[FAIL errorcheck: missing error] "truncated" testdata/gc/fixedbugs/bug255.go:11:20
-[FAIL errorcheck: missing error] "invalid array bound|not numeric" testdata/gc/fixedbugs/bug255.go:12:20
+[PASS errorcheck] "truncated": constant 1.5 truncated to integer testdata/gc/fixedbugs/bug255.go:11:8
+[PASS errorcheck] "invalid array bound|not numeric": invalid array bound "abc" testdata/gc/fixedbugs/bug255.go:12:8
 [PASS errorcheck] "invalid array bound|not numeric": invalid array bound nil testdata/gc/fixedbugs/bug255.go:13:8
 [FAIL errorcheck: missing error] "invalid array bound|not constant" testdata/gc/fixedbugs/bug255.go:14:20
 [PASS errorcheck] "array bound is too large|overflows": array bound is too large testdata/gc/fixedbugs/bug255.go:15:8

@@ -187,10 +187,13 @@ func (n *ArrayType) check(ctx *context) (stop bool) {
 
 		n.Type = newArrayType(ctx, t, -1)
 		if cv := n.compLitValue; cv != nil {
-			stop = (*CompLitValue)(nil).check(ctx, cv, n.Type)
+			return (*CompLitValue)(nil).check(ctx, cv, n.Type)
 		}
 	case 1: // '[' Expression ']' Typ
-		stop = n.Expression.check(ctx) || n.Typ.check(ctx)
+		if n.Expression.check(ctx) || n.Typ.check(ctx) {
+			return true
+		}
+
 		v := n.Expression.Value
 		if v == nil {
 			break
@@ -204,6 +207,23 @@ func (n *ArrayType) check(ctx *context) (stop bool) {
 		switch v.Kind() {
 		case ConstValue:
 			switch c := v.Const(); c.Kind() {
+			case FloatingPointConst:
+				if !c.nonNegativeInteger() {
+					return ctx.constAssignmentFail(n.Expression, ctx.intType, c)
+				}
+
+				if d := c.Convert(ctx.intType); d != nil {
+					val := d.Const().(*intConst).val
+					if val >= 0 {
+						n.Type = newArrayType(ctx, t, val)
+						break
+					}
+
+					todo(n, true)
+					break
+				}
+
+				return ctx.err(n.Expression, "array bound is too large")
 			case IntConst:
 				if d := c.Convert(ctx.intType); d != nil {
 					val := d.Const().(*intConst).val
@@ -216,19 +236,19 @@ func (n *ArrayType) check(ctx *context) (stop bool) {
 					break
 				}
 
-				ctx.err(n.Expression, "array bound is too large")
+				return ctx.err(n.Expression, "array bound is too large")
 			default:
-				todo(n)
+				return ctx.err(n.Expression, "invalid array bound %s", c)
 			}
 		case NilValue:
-			ctx.err(n.Expression, "invalid array bound nil")
+			return ctx.err(n.Expression, "invalid array bound nil")
 		default:
 			todo(n, true)
 		}
 	default:
 		panic("internal error")
 	}
-	return stop
+	return false
 }
 
 // ----------------------------------------------------------------- Assignment

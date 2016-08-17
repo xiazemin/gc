@@ -570,44 +570,43 @@ func (c *Context) untypedArithmeticBinOpType(a, b Type) Type {
 	}
 }
 
-func (c *Context) valueAssignmentFail(n Node, t Type, v Value) {
+func (c *Context) valueAssignmentFail(n Node, t Type, v Value) bool {
 	switch v.Kind() {
 	case ConstValue:
-		c.constAssignmentFail(n, t, v.Const())
+		return c.constAssignmentFail(n, t, v.Const())
 	default:
 		switch {
 		case t.Kind() == Interface:
-			v.Type().implementsFailed(t.context(), n, "cannot use type %s as type %s in assignment:", t)
+			return v.Type().implementsFailed(t.context(), n, "cannot use type %s as type %s in assignment:", t)
 		default:
-			c.err(n, "cannot use type %s as type %s in assignment", v.Type(), t)
+			return c.err(n, "cannot use type %s as type %s in assignment", v.Type(), t)
 		}
 	}
 }
 
-func (c *Context) constAssignmentFail(n Node, t Type, d Const) {
+func (c *Context) constAssignmentFail(n Node, t Type, d Const) bool {
 	if d.Untyped() && d.Type().ConvertibleTo(t) &&
 		!(d.Type().Kind() == String && t.Kind() == Slice && (t.Elem().Kind() == Uint8 || t.Elem().Kind() == Int32)) &&
 		!(d.Integral() && t.Kind() == String) {
-		c.constConversionFail(n, t, d)
-		return
+		return c.constConversionFail(n, t, d)
 	}
 
-	c.err(n, "cannot use %s (type %s) as type %s in assignment", d, d.Type(), t)
+	return c.err(n, "cannot use %s (type %s) as type %s in assignment", d, d.Type(), t)
 }
 
-func (c *Context) constConversionFail(n Node, t Type, d Const) {
+func (c *Context) constConversionFail(n Node, t Type, d Const) bool {
 	switch {
 	case t.Kind() == Interface && d.Type().Implements(t):
 		// nop
+		return false
 	case d.Type().ComplexType() && t.Numeric():
-		//todo(n, true)
-		c.err(n, "constant %s truncated to real", d)
+		return c.err(n, "constant %s truncated to real", d)
 	case d.Type().FloatingPointType() && t.IntegerType() && !d.Integral():
-		c.err(n, "constant %s truncated to integer", d)
+		return c.err(n, "constant %s truncated to integer", d)
 	case !d.Type().ConvertibleTo(t):
-		c.err(n, "cannot convert type %s to %s", d.Type(), t)
+		return c.err(n, "cannot convert type %s to %s", d.Type(), t)
 	default:
-		c.err(n, "constant %s overflows %s", d, t)
+		return c.err(n, "constant %s overflows %s", d, t)
 	}
 }
 
