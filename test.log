@@ -416,7 +416,7 @@
 [PASS errorcheck] "constant|wrong|invalid": invalid constant type interface{} testdata/gc/fixedbugs/bug238.go:17:9
 [FAIL errorcheck: missing error] "not used" testdata/gc/fixedbugs/bug240.go:9:19
 [FAIL errorcheck: missing error] "undefined" testdata/gc/fixedbugs/bug240.go:13:28
-[FAIL errorcheck: missing error] "String" testdata/gc/fixedbugs/bug241.go:10:20
+[PASS errorcheck] "String": String undefined (type int has no field or method String) testdata/gc/fixedbugs/bug241.go:10:11
 [PASS errorcheck] "chan|incompatible": cannot use type chan <-chan int as type chan<- chan int in assignment testdata/gc/fixedbugs/bug249.go:10:27
 [PASS errorcheck] "chan|incompatible": cannot use type chan<- chan int as type chan <-chan int in assignment testdata/gc/fixedbugs/bug249.go:26:28
 [PASS errorcheck] "loop|interface": interface type loop involving I1 testdata/gc/fixedbugs/bug251.go:15:2
@@ -920,8 +920,8 @@
 [FAIL errorcheck: missing error] "initialization loop|depends upon itself" testdata/gc/fixedbugs/issue6703b.go:16:14
 [FAIL errorcheck: missing error] "initialization loop|depends upon itself" testdata/gc/fixedbugs/issue6703c.go:18:13
 [FAIL errorcheck: missing error] "initialization loop|depends upon itself" testdata/gc/fixedbugs/issue6703d.go:18:16
-[FAIL errorcheck: missing error] "initialization loop|depends upon itself" testdata/gc/fixedbugs/issue6703e.go:18:16
-[FAIL errorcheck: missing error] "initialization loop|depends upon itself" testdata/gc/fixedbugs/issue6703f.go:18:18
+[FAIL errorcheck: error does not match] "initialization loop|depends upon itself": m undefined (type litmethvalue.T has no field or method m) testdata/gc/fixedbugs/issue6703e.go:18:14
+[FAIL errorcheck: error does not match] "initialization loop|depends upon itself": m undefined (type litmethcall.T has no field or method m) testdata/gc/fixedbugs/issue6703f.go:18:14
 [FAIL errorcheck: missing error] "initialization loop|depends upon itself" testdata/gc/fixedbugs/issue6703g.go:20:13
 [FAIL errorcheck: missing error] "initialization loop|depends upon itself" testdata/gc/fixedbugs/issue6703h.go:20:19
 [FAIL errorcheck: missing error] "initialization loop|depends upon itself" testdata/gc/fixedbugs/issue6703i.go:20:15
