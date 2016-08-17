@@ -986,6 +986,7 @@
 [PASS errorcheck] "is not (a )?constant": const initializer is not a constant testdata/gc/fixedbugs/issue7760.go:22:11
 [PASS errorcheck] "is not (a )?constant": const initializer is not a constant testdata/gc/fixedbugs/issue7760.go:24:11
 [PASS errorcheck] "is not (a )?constant": const initializer is not a constant testdata/gc/fixedbugs/issue7760.go:25:11
+[FAIL errorcheck: extra error] constant 256 overflows uint8 testdata/gc/fixedbugs/issue8183.go:12:12
 [FAIL errorcheck: missing error] "constant 256 overflows byte" testdata/gc/fixedbugs/issue8183.go:15:7
 [FAIL errorcheck: missing error] "array bound must be non-negative" "const initializer len\(composite literal\) is not a constant" testdata/gc/fixedbugs/issue8183.go:21:4
 [FAIL errorcheck: missing error] "array bound must be non-negative" "const initializer len\(composite literal\) is not a constant" testdata/gc/fixedbugs/issue8183.go:22:4

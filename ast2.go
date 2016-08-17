@@ -122,11 +122,13 @@ func (n *Argument) check(ctx *context) (stop bool) {
 
 	switch n.Case {
 	case 0: // Expression
+		//dbg("", position(n.Pos()))
 		if n.Expression.check(ctx) {
 			return true
 		}
 
 		n.Value = n.Expression.Value
+		//dbg("%p", n.Value)
 		n.lenPoisoned = n.Expression.lenPoisoned
 	case 1: // TypeLiteral
 		if n.TypeLiteral.check(ctx) {
@@ -774,6 +776,9 @@ func (n *ConstSpec) decl(lx *lexer, t *Typ, el *ExpressionList) {
 		lx.iota++
 	}()
 
+	if el != nil && lx.firstConstSpec {
+		lx.constExpr = el
+	}
 	el0 := el
 	if el0 == nil {
 		el0 = lx.constExpr
@@ -782,23 +787,26 @@ func (n *ConstSpec) decl(lx *lexer, t *Typ, el *ExpressionList) {
 		lx.err(n, "constant declaration must have expression")
 		return
 	}
+
 	scopeStart := lx.lookahead.Pos()
+	el = el0
 loop:
 	for l := n.IdentifierList; l != nil; l = l.IdentifierList {
 		var e *Expression
 		switch {
-		case el != nil:
-			e = el.Expression
-			el = el.ExpressionList
 		case el0 != nil:
-			lx.err(el0, "not enough expression(s) in list")
+			el = el0
+			e = el0.Expression
+			el0 = el0.ExpressionList
+		default:
+			lx.err(el, "not enough expression(s) in list")
 			break loop
 		}
 		d := newConstDeclaration(l.ident(), t, e, lx.iota, scopeStart)
 		lx.declarationScope.declare(lx, d)
 	}
-	if el != nil {
-		lx.err(el, "extra expression(s) in list")
+	if el0 != nil {
+		lx.err(el0, "extra expression(s) in list")
 	}
 }
 
@@ -825,13 +833,16 @@ func (n *Expression) check(ctx *context) (stop bool) {
 		return false
 	}
 
+	//dbg("", position(n.Pos()))
 	if n.Expression.check(ctx) ||
 		n.Expression2.check(ctx) ||
 		n.UnaryExpression.check(ctx) {
+		//dbg("")
 		return true
 	}
 
 	if n.Case != 0 && (n.Expression.Value == nil || n.Expression2.Value == nil) {
+		//dbg("")
 		return false
 	}
 
@@ -845,6 +856,7 @@ func (n *Expression) check(ctx *context) (stop bool) {
 	switch n.Case {
 	case 0: // UnaryExpression
 		n.Value = n.UnaryExpression.Value
+		//dbg("%p", n.Value)
 	case 1: // Expression '%' Expression
 		n.Value = n.Expression.Value.mod(n.Token, n.Expression2.Value)
 	case 2: // Expression '&' Expression
@@ -1324,9 +1336,11 @@ func (n *Operand) check(ctx *context) (stop bool) {
 		return false
 	}
 
+	//dbg("", position(n.Pos()), n.Case)
 	if n.Expression.check(ctx) ||
 		n.FuncType.check(ctx) ||
 		n.StatementList.check(ctx) {
+		//dbg("")
 		return true
 	}
 
@@ -1360,15 +1374,19 @@ func (n *Operand) check(ctx *context) (stop bool) {
 
 		d := n.resolutionScope.mustLookup(ctx, n.Token, n.fileScope)
 		if d == nil {
+			//dbg("")
 			break
 		}
 
 		if n.checkDeclaration(ctx, d) {
+			//dbg("")
 			return true
 		}
 
+		//dbg("")
 		switch isPredeclared := ctx.isPredeclared(d); x := d.(type) {
 		case *ConstDeclaration:
+			//dbg("")
 			if isPredeclared {
 				switch d.Name() {
 				case idFalse:
@@ -1387,13 +1405,18 @@ func (n *Operand) check(ctx *context) (stop bool) {
 			}
 
 			n.Value = x.Value
+			//dbg("%p", n.Value)
 		case *FuncDeclaration:
+			//dbg("")
 			n.Value = newDeclarationValue(d, x.Type)
 		case *ImportDeclaration:
+			//dbg("")
 			n.Value = newPackageValue(x)
 		case *TypeDeclaration:
+			//dbg("")
 			n.Value = newTypeValue(x)
 		case *VarDeclaration:
+			//dbg("")
 			if isPredeclared {
 				switch d.Name() {
 				case idNil:
@@ -1408,6 +1431,7 @@ func (n *Operand) check(ctx *context) (stop bool) {
 				n.Value = newAddressableValue(t)
 			}
 		default:
+			//dbg("")
 			//dbg("%s: %T", position(n.Pos()), d)
 			todo(n)
 		}
@@ -1808,6 +1832,7 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 		return false
 	}
 
+	//dbg("", position(n.Pos()), n.Case)
 	if n.Call.check(ctx) ||
 		n.Expression.check(ctx) ||
 		n.ExpressionOpt.check(ctx) ||
@@ -1817,6 +1842,7 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 		n.PrimaryExpression.check(ctx) ||
 		n.Typ.check(ctx) ||
 		n.TypeLiteral.check(ctx) {
+		//dbg("")
 		return true
 	}
 
@@ -1836,6 +1862,7 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 	case 0: // Operand
 		n.Value = n.Operand.Value
 		n.lenPoisoned = n.Operand.lenPoisoned
+		//dbg("%p", n.Value)
 	case 1: // CompLitType LBraceCompLitValue
 		if n.CompLitType.check(ctx) {
 			return true
@@ -2957,7 +2984,9 @@ func (n *UnaryExpression) check(ctx *context) (stop bool) {
 		return false
 	}
 
+	//dbg("", position(n.Pos()), n.Case)
 	if n.UnaryExpression.check(ctx) || n.PrimaryExpression.check(ctx) {
+		//dbg("")
 		return true
 	}
 
@@ -3048,6 +3077,7 @@ func (n *UnaryExpression) check(ctx *context) (stop bool) {
 		}
 	case 7: // PrimaryExpression
 		n.Value = n.PrimaryExpression.Value
+		//dbg("%p", n.Value)
 	default:
 		panic("internal error")
 	}

@@ -182,16 +182,30 @@ func builtinMake(ctx *context, call *Call) Value {
 		todo(call.ArgumentList.node(3), true) // too many args
 	}
 
+	iarg := [3]int64{1: -1, 2: -1}
 	for i := 1; i <= 2 && i < len(args); i++ {
 		v := args[i]
 		if v == nil {
 			continue
 		}
 
+		if !v.nonNegativeInteger() {
+			todo(call, true)
+			return nil
+		}
+
 		switch v.Kind() {
+		case ConstValue:
+			c := v.Const().Convert(ctx.intType)
+			if c == nil {
+				todo(call, true) //TODO ctx.constConversionFail(call.ArgumentList.node(i), ctx.intType, v.Const())
+				return nil
+			}
+
+			iarg[i] = c.Const().(*intConst).val
 		default:
 			//dbg("", v.Kind())
-			todo(call.ArgumentList.node(i))
+			todo(call)
 		}
 	}
 
@@ -218,7 +232,10 @@ func builtinMake(ctx *context, call *Call) Value {
 
 			return newRuntimeValue(t)
 		case Slice:
-			todo(call)
+			if len(args) == 3 {
+				todo(call) // check arg2 <= arg3
+			}
+			return newRuntimeValue(t)
 		default:
 			todo(call, true) // invalid arg
 		}

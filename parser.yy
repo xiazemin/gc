@@ -420,8 +420,10 @@ ConstSpec:
 		lhs.decl(lx, lhs.Typ, lhs.ExpressionList)
 	}
 
+/*yy:example "package a ; const ( b = 42 )" */
 ConstSpecList:
 	ConstSpec
+/*yy:example "package a ; const ( b = 42 ; c = 314 )" */
 |       ConstSpecList ';' ConstSpec
 
 Elif:
