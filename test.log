@@ -373,9 +373,10 @@
 [FAIL errorcheck: missing error] "shift" testdata/gc/fixedbugs/bug193.go:14:24
 [PASS errorcheck] "interface": interface contains embedded non-interface I2 testdata/gc/fixedbugs/bug195.go:9:21
 [PASS errorcheck] "interface": interface contains embedded non-interface int testdata/gc/fixedbugs/bug195.go:12:21
-[PASS errorcheck] "interface": interface type loop involving S testdata/gc/fixedbugs/bug195.go:15:15
-[PASS errorcheck] "interface": interface type loop involving I4 testdata/gc/fixedbugs/bug195.go:18:2
-[PASS errorcheck] "interface": interface type loop involving I5 testdata/gc/fixedbugs/bug195.go:26:2
+[PASS errorcheck] "interface": interface contains embedded non-interface S testdata/gc/fixedbugs/bug195.go:15:15
+[PASS errorcheck] "interface": interface contains embedded non-interface I4 testdata/gc/fixedbugs/bug195.go:18:2
+[FAIL errorcheck: extra error] interface type loop involving I6 testdata/gc/fixedbugs/bug195.go:22:2
+[PASS errorcheck] "interface": interface contains embedded non-interface I5 testdata/gc/fixedbugs/bug195.go:26:2
 [PASS errorcheck] "cannot use|incompatible": cannot use 0 (type int) as type main.T in assignment testdata/gc/fixedbugs/bug197.go:14:11
 [PASS errorcheck] "cannot use|incompatible": cannot use type int as type main.T in assignment testdata/gc/fixedbugs/bug197.go:15:12
 [PASS errorcheck] "cannot use|incompatible": cannot use 0 (type int) as type main.U in assignment testdata/gc/fixedbugs/bug197.go:16:11
@@ -419,7 +420,8 @@
 [PASS errorcheck] "String": String undefined (type int has no field or method String) testdata/gc/fixedbugs/bug241.go:10:11
 [PASS errorcheck] "chan|incompatible": cannot use type chan <-chan int as type chan<- chan int in assignment testdata/gc/fixedbugs/bug249.go:10:27
 [PASS errorcheck] "chan|incompatible": cannot use type chan<- chan int as type chan <-chan int in assignment testdata/gc/fixedbugs/bug249.go:26:28
-[PASS errorcheck] "loop|interface": interface type loop involving I1 testdata/gc/fixedbugs/bug251.go:15:2
+[FAIL errorcheck: extra error] interface type loop involving I2 testdata/gc/fixedbugs/bug251.go:11:2
+[PASS errorcheck] "loop|interface": interface contains embedded non-interface I1 testdata/gc/fixedbugs/bug251.go:15:2
 [FAIL errorcheck: extra error] cannot use type main.I2 as type main.I1 in assignment:\n\tmain.I2 does not implement main.I1 (missing m method) testdata/gc/fixedbugs/bug251.go:19:13
 [FAIL errorcheck: missing error] "cannot use|incompatible" testdata/gc/fixedbugs/bug252.go:14:10
 [PASS errorcheck] "truncated": constant 1.5 truncated to integer testdata/gc/fixedbugs/bug255.go:11:8
@@ -542,7 +544,7 @@
 [PASS errorcheck] "cannot use 1.*as type string in map key|incompatible type": cannot use 1 (type int) as type string in map key testdata/gc/fixedbugs/bug397.go:12:2
 [PASS errorcheck] "duplicate field x": duplicate field x, previous declaration at testdata/gc/fixedbugs/bug412.go:10:2 testdata/gc/fixedbugs/bug412.go:11:2
 [FAIL errorcheck: missing error] "ambiguous selector t.x" testdata/gc/fixedbugs/bug412.go:15:14
-[FAIL errorcheck: missing error] "initialization loop|depends upon itself" testdata/gc/fixedbugs/bug413.go:11:45
+[PASS errorcheck] "initialization loop|depends upon itself": initialization loop\n\ttestdata/gc/fixedbugs/bug413.go:11:5: i uses i testdata/gc/fixedbugs/bug413.go:11:5
 [FAIL errorcheck: missing error] "type T has both field and method named X|redeclares struct field name" testdata/gc/fixedbugs/bug416.go:13:20
 [FAIL errorcheck: missing error] "single-value context" testdata/gc/fixedbugs/bug418.go:16:18
 [FAIL errorcheck: missing error] "single-value context" testdata/gc/fixedbugs/bug418.go:21:24
@@ -966,11 +968,11 @@
 [FAIL errorcheck: missing error] "use of untyped nil" testdata/gc/fixedbugs/issue7310.go:12:25
 [FAIL errorcheck: missing error] "use of untyped nil" testdata/gc/fixedbugs/issue7310.go:13:25
 [FAIL errorcheck: missing error] "cannot convert true" "mismatched types int and bool" testdata/gc/fixedbugs/issue7310.go:14:13
-[FAIL errorcheck: missing error] "array bound|typechecking loop|invalid expression" testdata/gc/fixedbugs/issue7525.go:14:28
-[FAIL errorcheck: missing error] "array bound" testdata/gc/fixedbugs/issue7525.go:15:30
-[FAIL errorcheck: missing error] "array bound|invalid expression" testdata/gc/fixedbugs/issue7525.go:16:29
-[FAIL errorcheck: missing error] "array bound|invalid array" testdata/gc/fixedbugs/issue7525.go:17:18
-[FAIL errorcheck: missing error] "array bound|invalid array" testdata/gc/fixedbugs/issue7525.go:18:18
+[PASS errorcheck] "array bound|typechecking loop|invalid expression": invalid array bound testdata/gc/fixedbugs/issue7525.go:14:5
+[PASS errorcheck] "array bound": invalid array bound testdata/gc/fixedbugs/issue7525.go:15:5
+[PASS errorcheck] "array bound|invalid expression": invalid array bound testdata/gc/fixedbugs/issue7525.go:16:5
+[PASS errorcheck] "array bound|invalid array": invalid array bound testdata/gc/fixedbugs/issue7525.go:17:5
+[PASS errorcheck] "array bound|invalid array": invalid array bound testdata/gc/fixedbugs/issue7525.go:18:5
 [FAIL errorcheck: missing error] "not defined" testdata/gc/fixedbugs/issue7538a.go:14:9
 [FAIL errorcheck: missing error] "not enough arguments" testdata/gc/fixedbugs/issue7675.go:16:21
 [FAIL errorcheck: missing error] "too many arguments" testdata/gc/fixedbugs/issue7675.go:18:27
@@ -1080,6 +1082,7 @@
 [FAIL errorcheck: missing error] "invalid operation.*mismatched types" testdata/gc/fixedbugs/issue9370.go:122:12
 [FAIL errorcheck: missing error] "invalid operation.*mismatched types" testdata/gc/fixedbugs/issue9370.go:123:12
 [FAIL errorcheck: missing error] "invalid operation.*mismatched types" testdata/gc/fixedbugs/issue9370.go:124:12
+[FAIL errorcheck: extra error] invalid recursive type foo testdata/gc/fixedbugs/issue9432.go:12:6
 [PASS errorcheck] "invalid recursive type foo": invalid recursive type foo testdata/gc/fixedbugs/issue9432.go:15:1
 [FAIL errorcheck: missing error] "cannot append \[\]int value to \[\]int" testdata/gc/fixedbugs/issue9521.go:16:18
 [FAIL errorcheck: missing error] "cannot append float64 value to \[\]int" testdata/gc/fixedbugs/issue9521.go:17:18
@@ -1201,7 +1204,7 @@
 [PASS errorcheck] "convert|too many": too many values in struct initializer testdata/gc/initializerr.go:23:19
 [PASS errorcheck] "index|too many": array index 5 out of bounds [0:5] testdata/gc/initializerr.go:24:34
 [PASS errorcheck] "index": index must be non-negative integer constant testdata/gc/initializerr.go:25:19
-[FAIL errorcheck: missing error] "a refers to\n.*b refers to\n.*c refers to\n.*a" testdata/gc/initloop.go:14:12
+[FAIL errorcheck: error does not match] "a refers to\n.*b refers to\n.*c refers to\n.*a": initialization loop\n\ttestdata/gc/initloop.go:14:2: a uses b\n\ttestdata/gc/initloop.go:15:2: b uses c\n\ttestdata/gc/initloop.go:16:2: c uses a testdata/gc/initloop.go:14:2
 [TODO "errorcheck -0 -m"] testdata/gc/inline.go
 [TODO "errorcheck -0 -d=typeassert"] testdata/gc/interface/assertinline.go
 [FAIL errorcheck: missing error] "interface" testdata/gc/interface/embed2.go:33:26

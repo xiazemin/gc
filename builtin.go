@@ -218,7 +218,11 @@ func builtinMake(ctx *context, call *Call) Value {
 	case TypeValue:
 		switch t := v.Type(); t.Kind() {
 		case Chan:
-			todo(call)
+			if len(args) > 2 {
+				todo(call.ArgumentList.node(2), true) // too many args
+			}
+
+			return newRuntimeValue(t)
 		case Map:
 			if kt := t.Key(); kt != nil && !kt.Comparable() {
 				todo(call, true) // invalid key type
@@ -227,9 +231,7 @@ func builtinMake(ctx *context, call *Call) Value {
 
 			if len(args) > 2 {
 				todo(call.ArgumentList.node(2), true) // too many args
-				break
 			}
-
 			return newRuntimeValue(t)
 		case Slice:
 			if len(args) == 3 {

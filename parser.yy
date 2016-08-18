@@ -472,7 +472,6 @@ ExpressionOpt:
 |       Expression
 
 /*yy:field	list	[]*Expression */
-/*yy:field	idlist	[]xc.Token */
 ExpressionList:
 	Expression
 |       ExpressionList ',' Expression
@@ -844,6 +843,8 @@ SemicolonOpt:
 Signature:
 	Parameters ResultOpt
 
+/*yy:field	idlist	[]xc.Token */
+/*yy:field	resolutionScope	*Scope */
 SimpleStatement:
 	Assignment
 |       Expression
@@ -851,7 +852,8 @@ SimpleStatement:
 |       Expression "++"
 |       ExpressionList ":=" ExpressionList
 	{
-		varDecl(lx, lhs.ExpressionList, lhs.ExpressionList2, nil, ":=", -1, -1)
+		lhs.resolutionScope = lx.resolutionScope
+		lhs.idlist = varDecl(lx, lhs.ExpressionList, lhs.ExpressionList2, nil, ":=", -1, -1)
 	}
 
 SimpleStatementOpt:

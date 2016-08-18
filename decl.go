@@ -698,9 +698,7 @@ func (n *TypeDeclaration) check(ctx *context) (stop bool) {
 	defer n.guard.done(ctx)
 
 	if t0 := n.typ0; t0 != nil && t0.Case == 9 { // StructType
-		n0 := ctx.node
-		ctx.node = t0.StructType.Token2
-		defer func() { ctx.node = n0 }()
+		ctx.setNode(t0.StructType.Token2)
 	}
 
 	t0 := n.typ0
@@ -1099,7 +1097,7 @@ func (n *VarDeclaration) Name() int { return n.name }
 // ScopeStart implements Declaration.
 func (n *VarDeclaration) ScopeStart() token.Pos { return n.scopeStart }
 
-func varDecl(lx *lexer, lhs, rhs Node, typ0 *Typ, op string, maxLHS, maxRHS int) {
+func varDecl(lx *lexer, lhs, rhs Node, typ0 *Typ, op string, maxLHS, maxRHS int) []xc.Token {
 	var ln []Node
 	var names []xc.Token
 	switch x := lhs.(type) {
@@ -1222,7 +1220,7 @@ func varDecl(lx *lexer, lhs, rhs Node, typ0 *Typ, op string, maxLHS, maxRHS int)
 			switch {
 			case i >= len(exprs):
 				lx.err(lx.lookahead, "missing initializer on right side of %s", op)
-				return
+				return names
 			default:
 				e = exprs[i]
 			}
@@ -1247,6 +1245,7 @@ func varDecl(lx *lexer, lhs, rhs Node, typ0 *Typ, op string, maxLHS, maxRHS int)
 	if lhsOk && op == ":=" && !hasNew {
 		lx.err(ln[0], "no new variables on left side of %s", op)
 	}
+	return names
 }
 
 type gate int
@@ -1260,6 +1259,10 @@ func (g *gate) check(ctx *context, d Declaration) (done, stop bool) {
 		*g = gateOpen
 		return false, false
 	case gateOpen:
+		defer func() {
+			ctx.node = nil
+		}()
+
 		stack := ctx.stack
 		if d != nil {
 			stack = append(ctx.stack, d)
@@ -1279,14 +1282,17 @@ func (g *gate) check(ctx *context, d Declaration) (done, stop bool) {
 			return true, false
 		}
 
-		*g = gateClosed
 		if f := ctx.errf; f != nil {
 			ctx.errf = nil
-			return true, f()
+			return true, f(g)
 		}
 
-		node := ctx.node
-		if node == nil {
+		var node Node
+		switch {
+		case ctx.node != nil:
+			node = ctx.node
+		default:
+			*g = gateClosed
 			node = d
 		}
 		var prolog string
@@ -1301,8 +1307,7 @@ func (g *gate) check(ctx *context, d Declaration) (done, stop bool) {
 		case *TypeDeclaration:
 			return true, ctx.err(node, "invalid recursive type %s", dict.S(d.Name()))
 		case *VarDeclaration:
-			todo(d)
-			return true, false
+			prolog = "initialization loop"
 		default:
 			panic("internal error")
 		}
@@ -1333,8 +1338,22 @@ type context struct {
 	stack []Declaration
 	node  Node
 	iota  Value
-	errf  func() bool
+	errf  func(*gate) bool
 	pkg   *Package
 }
 
 func (c *context) pop() { c.stack = c.stack[:len(c.stack)-1] }
+
+func (c *context) setNode(n Node) *context {
+	if c.node == nil {
+		c.node = n
+	}
+	return c
+}
+
+func (c *context) setErrf(f func(*gate) bool) *context {
+	if c.errf == nil {
+		c.errf = f
+	}
+	return c
+}
