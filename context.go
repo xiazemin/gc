@@ -339,6 +339,10 @@ func (c *Context) newPackage(importPath, directory string) *Package {
 }
 
 func (c *Context) err(n Node, format string, arg ...interface{}) bool {
+	if n == nil {
+		panic("internal error")
+	}
+
 	return c.errPos(n.Pos(), format, arg...)
 }
 
@@ -595,6 +599,7 @@ func (c *Context) constAssignmentFail(n Node, t Type, d Const) bool {
 }
 
 func (c *Context) constConversionFail(n Node, t Type, d Const) bool {
+	fpOverflow := d.Type().FloatingPointType() && t.ComplexType()
 	switch {
 	case t.Kind() == Interface && d.Type().Implements(t):
 		// nop
@@ -603,7 +608,7 @@ func (c *Context) constConversionFail(n Node, t Type, d Const) bool {
 		return c.err(n, "constant %s truncated to real", d)
 	case d.Type().FloatingPointType() && t.IntegerType() && !d.Integral():
 		return c.err(n, "constant %s truncated to integer", d)
-	case !d.Type().ConvertibleTo(t):
+	case !d.Type().ConvertibleTo(t) && !fpOverflow:
 		return c.err(n, "cannot convert type %s to %s", d.Type(), t)
 	default:
 		return c.err(n, "constant %s overflows %s", d, t)
@@ -785,7 +790,7 @@ func (c *Context) constStringBinOpShape(a, b Const, n Node) (Type, bool /* untyp
 			todo(n)
 		}
 	case b.Untyped(): // !a.Untyped() && b.Untyped()
-		return a.Type(), false, a, b.mustConvert(nil, a.Type()) // Cannot fail.
+		return a.Type(), false, a, b.mustConvert(n, a.Type()) // Cannot fail.
 	default: // !a.Untyped() && !b.Untyped()
 		todo(n)
 	}

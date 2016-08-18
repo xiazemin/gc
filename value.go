@@ -791,6 +791,12 @@ type Const interface {
 	// See https://golang.org/ref/spec#Conversions
 	Convert(t Type) Value
 
+	// ConvertibleTo reports whether this constant is convertible to type
+	// u.
+	//
+	// See https://golang.org/ref/spec#Conversions
+	ConvertibleTo(u Type) bool
+
 	// Integral reports whether the constant's value is ∈ Z. It panics if
 	// the constant is not numeric.
 	Integral() bool
@@ -824,6 +830,7 @@ func (c *constBase) andNot0(Node, Type, bool, Const) Const { panic("internal err
 func (c *constBase) AssignableTo(Type) bool                { panic("internal error") }
 func (c *constBase) convert(Type) Const                    { panic("internal error") }
 func (c *constBase) Convert(Type) Value                    { panic("internal error") }
+func (c *constBase) ConvertibleTo(u Type) bool             { panic("internal error") }
 func (c *constBase) div0(Node, Type, bool, Const) Const    { panic("internal error") }
 func (c *constBase) eq0(Node, Type, bool, Const) Const     { panic("internal error") }
 func (c *constBase) ge0(Node, Type, bool, Const) Const     { panic("internal error") }
@@ -849,7 +856,7 @@ func (c *constBase) xor0(Node, Type, bool, Const) Const    { panic("internal err
 
 func (c *constBase) mustConvertConst(n Node, d Const, t Type) Const {
 	e := d.convert(t)
-	if e.representable(t) != nil {
+	if e == nil || e.representable(t) != nil {
 		return e
 	}
 
@@ -1262,6 +1269,22 @@ func (c *boolConst) AssignableTo(t Type) bool { return c.assignableTo(c, t) }
 func (c *boolConst) mapKey() mapKey           { return mapKey{b: c.val} }
 func (c *boolConst) normalize() Const         { return c }
 
+func (c *boolConst) ConvertibleTo(u Type) bool {
+	// A constant value x can be converted to type T
+	//
+	// · x is representable by a value of type T.
+
+	// · x is a floating-point constant, T is a floating-point type, and x is
+	// representable by a value of type T after rounding using IEEE 754
+	// round-to-even rules, but with an IEEE -0.0 further rounded to an unsigned
+	// 0.0. The constant T(x) is the rounded value.
+
+	// · x is an integer constant and T is a string type. The same rule as for
+	// non-constant x applies in this case.
+
+	return false
+}
+
 func (c *boolConst) boolAnd(n Node, op Value) Value {
 	ctx := op.Type().context()
 	switch op.Kind() {
@@ -1359,6 +1382,22 @@ func newComplexConst(val complex128, bigVal *bigComplex, typ Type, untyped bool)
 func (c *complexConst) AssignableTo(t Type) bool         { return c.assignableTo(c, t) }
 func (c *complexConst) mustConvert(n Node, t Type) Const { return c.mustConvertConst(n, c, t) }
 
+func (c *complexConst) ConvertibleTo(u Type) bool {
+	// A constant value x can be converted to type T
+	//
+	// · x is representable by a value of type T.
+
+	return c.representable(u) != nil
+
+	// · x is a floating-point constant, T is a floating-point type, and x is
+	// representable by a value of type T after rounding using IEEE 754
+	// round-to-even rules, but with an IEEE -0.0 further rounded to an unsigned
+	// 0.0. The constant T(x) is the rounded value.
+
+	// · x is an integer constant and T is a string type. The same rule as for
+	// non-constant x applies in this case.
+}
+
 func (c *complexConst) add(n Node, op Value) Value {
 	todo(n)
 	return nil
@@ -1445,7 +1484,16 @@ func (c *complexConst) String() string {
 }
 
 func (c *complexConst) convert(t Type) Const {
-	todo(zeroNode) //TODO
+	switch {
+	case t.IntegerType():
+		todo(zeroNode)
+	case t.FloatingPointType():
+		todo(zeroNode)
+	case t.ComplexType():
+		todo(zeroNode)
+	default:
+		panic("internal error")
+	}
 	return nil
 }
 
@@ -1460,12 +1508,34 @@ func (c *complexConst) div(n Node, op Value) Value {
 }
 
 func (c *complexConst) mul0(n Node, t Type, untyped bool, op Const) Const {
-	todo(n)
-	return nil
+	ctx := t.context()
+	var d bigComplex
+	d.mul(c.bigVal, op.(*complexConst).bigVal)
+	if untyped {
+		t = nil
+	}
+	e := newComplexConst(0, &d, ctx.complex128Type, true)
+	if e.normalize() == nil {
+		todo(n, true) // ctx.err(n, "constant multiplication overflow")
+		return nil
+	}
+
+	return ctx.mustConvertConst(n, t, e)
 }
 
 func (c *complexConst) mul(n Node, op Value) Value {
-	todo(n)
+	ctx := op.Type().context()
+	switch op.Kind() {
+	case ConstValue:
+		t, untyped, a, b := ctx.arithmeticBinOpShape(c, op.Const(), n)
+		if t != nil {
+			if d := a.mul0(n, t, untyped, b); d != nil {
+				return newConstValue(d)
+			}
+		}
+	default:
+		todo(n)
+	}
 	return nil
 }
 
@@ -1505,6 +1575,27 @@ func newFloatConst(val float64, bigVal *big.Float, typ Type, untyped bool) *floa
 
 func (c *floatConst) AssignableTo(t Type) bool         { return c.assignableTo(c, t) }
 func (c *floatConst) mustConvert(n Node, t Type) Const { return c.mustConvertConst(n, c, t) }
+
+func (c *floatConst) ConvertibleTo(u Type) bool {
+	// A constant value x can be converted to type T
+	//
+	// · x is representable by a value of type T.
+
+	if c.representable(u) != nil {
+		return true
+	}
+
+	// · x is a floating-point constant, T is a floating-point type, and x is
+	// representable by a value of type T after rounding using IEEE 754
+	// round-to-even rules, but with an IEEE -0.0 further rounded to an unsigned
+	// 0.0. The constant T(x) is the rounded value.
+
+	todo(zeroNode)
+	return false
+
+	// · x is an integer constant and T is a string type. The same rule as for
+	// non-constant x applies in this case.
+}
 
 func (c *floatConst) add(n Node, op Value) Value {
 	todo(n)
@@ -1601,7 +1692,27 @@ func (c *floatConst) convert(t Type) Const {
 
 		return newFloatConst(0, big.NewFloat(0).SetPrec(ctx.floatConstPrec).SetFloat64(c.val), ctx.float64Type, true)
 	case t.ComplexType():
-		todo(zeroNode)
+		if c.bigVal != nil {
+			return newComplexConst(
+				0,
+				&bigComplex{
+					c.bigVal,
+					big.NewFloat(0).SetPrec(ctx.floatConstPrec).SetFloat64(0),
+				},
+				ctx.complex128Type,
+				true,
+			)
+		}
+
+		return newComplexConst(
+			0,
+			&bigComplex{
+				big.NewFloat(0).SetPrec(ctx.floatConstPrec).SetFloat64(c.val),
+				big.NewFloat(0).SetPrec(ctx.floatConstPrec).SetFloat64(0),
+			},
+			ctx.complex128Type,
+			true,
+		)
 	default:
 		panic("internal error")
 	}
@@ -1683,7 +1794,13 @@ func (c *floatConst) mul0(n Node, t Type, untyped bool, op Const) Const {
 	if untyped {
 		t = nil
 	}
-	return ctx.mustConvertConst(n, t, newFloatConst(0, &d, ctx.float64Type, true))
+	e := newFloatConst(0, &d, ctx.float64Type, true)
+	if e.normalize() == nil {
+		todo(n, true) // ctx.err(n, "constant multiplication overflow")
+		return nil
+	}
+
+	return ctx.mustConvertConst(n, t, e)
 }
 
 func (c *floatConst) neq(n Node, op Value) Value {
@@ -1751,6 +1868,22 @@ func (c *intConst) AssignableTo(t Type) bool         { return c.assignableTo(c, 
 func (c *intConst) Integral() bool                   { return true }
 func (c *intConst) int() int64                       { return c.val }
 func (c *intConst) mustConvert(n Node, t Type) Const { return c.mustConvertConst(n, c, t) }
+
+func (c *intConst) ConvertibleTo(u Type) bool {
+	// A constant value x can be converted to type T
+	//
+	// · x is representable by a value of type T.
+
+	// · x is a floating-point constant, T is a floating-point type, and x is
+	// representable by a value of type T after rounding using IEEE 754
+	// round-to-even rules, but with an IEEE -0.0 further rounded to an unsigned
+	// 0.0. The constant T(x) is the rounded value.
+
+	// · x is an integer constant and T is a string type. The same rule as for
+	// non-constant x applies in this case.
+
+	return c.Convert(u) != nil
+}
 
 func (c *intConst) add0(n Node, t Type, untyped bool, op Const) Const {
 	ctx := t.context()
@@ -2435,6 +2568,22 @@ func newRuneConst(val rune, bigVal *big.Int, typ Type, untyped bool) *runeConst 
 	return &runeConst{intConst{constBase{RuneConst, typ, untyped}, int64(val), bigVal}}
 }
 
+func (c *runeConst) ConvertibleTo(u Type) bool {
+	// A constant value x can be converted to type T
+	//
+	// · x is representable by a value of type T.
+
+	// · x is a floating-point constant, T is a floating-point type, and x is
+	// representable by a value of type T after rounding using IEEE 754
+	// round-to-even rules, but with an IEEE -0.0 further rounded to an unsigned
+	// 0.0. The constant T(x) is the rounded value.
+
+	// · x is an integer constant and T is a string type. The same rule as for
+	// non-constant x applies in this case.
+
+	return c.Convert(u) != nil
+}
+
 func (c *runeConst) String() string {
 	if c.bigVal != nil {
 		return fmt.Sprint(c.bigVal)
@@ -2462,6 +2611,22 @@ func (c *stringConst) AssignableTo(t Type) bool         { return c.assignableTo(
 func (c *stringConst) mapKey() mapKey                   { return mapKey{i: int64(dict.ID(c.val.s()))} }
 func (c *stringConst) normalize() Const                 { return c }
 func (c *stringConst) mustConvert(n Node, t Type) Const { return c.mustConvertConst(n, c, t) }
+
+func (c *stringConst) ConvertibleTo(u Type) bool {
+	// A constant value x can be converted to type T
+	//
+	// · x is representable by a value of type T.
+
+	return u.Kind() == String
+
+	// · x is a floating-point constant, T is a floating-point type, and x is
+	// representable by a value of type T after rounding using IEEE 754
+	// round-to-even rules, but with an IEEE -0.0 further rounded to an unsigned
+	// 0.0. The constant T(x) is the rounded value.
+
+	// · x is an integer constant and T is a string type. The same rule as for
+	// non-constant x applies in this case.
+}
 
 func (c *stringConst) add(n Node, op Value) Value {
 	ctx := op.Type().context()
@@ -2557,12 +2722,22 @@ type bigComplex struct {
 	re, im *big.Float
 }
 
-func (c *bigComplex) String() string {
-	if c.im.Sign() >= 0 {
-		return fmt.Sprintf("%s+%si", bigFloatString(c.re), bigFloatString(c.im))
+func (z *bigComplex) String() string {
+	if z.im.Sign() >= 0 {
+		return fmt.Sprintf("%s+%si", bigFloatString(z.re), bigFloatString(z.im))
 	}
 
-	return fmt.Sprintf("%s%si", bigFloatString(c.re), bigFloatString(c.im))
+	return fmt.Sprintf("%s%si", bigFloatString(z.re), bigFloatString(z.im))
+}
+
+func (z *bigComplex) mul(x, y *bigComplex) *bigComplex {
+	// (a+bi)(c+di) = (ac-bd)+(bc+ad)i
+	var r bigComplex
+	var s big.Float
+	r.re.Sub(s.Mul(x.re, y.re), s.Mul(x.im, y.im))
+	r.re.Add(s.Mul(x.im, y.re), s.Mul(x.re, y.im))
+	*z = r
+	return z
 }
 
 // ---------------------------------------------------------------- stringValue

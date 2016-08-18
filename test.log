@@ -595,8 +595,8 @@
 [PASS errorcheck] "fmt without selector" "is not a constant": const initializer is not a constant testdata/gc/fixedbugs/issue11361.go:11:11
 [FAIL errorcheck: missing error] "non-canonical import path .unicode//utf8. \(should be .unicode/utf8.\)" "can't find import: .unicode//utf8." testdata/gc/fixedbugs/issue11362.go:11:26
 [PASS errorcheck] "constant 300 overflows int8" "constant 1200 overflows int8": constant 300 overflows int8 testdata/gc/fixedbugs/issue11590.go:9:17
-[FAIL errorcheck: missing error] "constant 1e\+200 overflows complex64" testdata/gc/fixedbugs/issue11590.go:10:31
-[FAIL errorcheck: missing error] "constant 1e\+500 overflows complex128" testdata/gc/fixedbugs/issue11590.go:11:31
+[PASS errorcheck] "constant 1e\+200 overflows complex64": constant 1e+200 overflows complex64 testdata/gc/fixedbugs/issue11590.go:10:22
+[PASS errorcheck] "constant 1e\+500 overflows complex128": constant 1e+500 overflows complex128 testdata/gc/fixedbugs/issue11590.go:11:23
 [PASS errorcheck] "import path is empty": import path is empty testdata/gc/fixedbugs/issue11610.go:11:7
 [FAIL errorcheck: error does not match] "illegal character U\+003F '\?'": unexpected ?, expected variable specification or one of ['(', identifier] testdata/gc/fixedbugs/issue11610.go:12:4
 [FAIL errorcheck: missing error] "unexpected var" "cannot declare name" testdata/gc/fixedbugs/issue11610.go:14:11
