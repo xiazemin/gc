@@ -471,7 +471,8 @@ ExpressionOpt:
 	/* empty */
 |       Expression
 
-/*yy:field	list	[]*Expression*/
+/*yy:field	list	[]*Expression */
+/*yy:field	idlist	[]xc.Token */
 ExpressionList:
 	Expression
 |       ExpressionList ',' Expression

@@ -950,6 +950,25 @@ func (n *ExpressionList) check(ctx *context) (stop bool) {
 	return false
 }
 
+func (n *ExpressionList) checkIdentifierList(ctx *context) (stop bool) {
+	if n == nil {
+		return false
+	}
+
+	if len(n.list) != 0 {
+		panic("internal error")
+	}
+
+	for ; n != nil; n = n.ExpressionList {
+		if n.Expression.check(ctx) {
+			return true
+		}
+
+		n.list = append(n.list, n.Expression)
+	}
+	return false
+}
+
 // ---------------------------------------------------------- ExpressionListOpt
 
 func (n *ExpressionListOpt) check(ctx *context) (stop bool) {
@@ -2519,7 +2538,7 @@ func (n *SimpleStatement) check(ctx *context) (stop bool) {
 
 	if n.Assignment.check(ctx) ||
 		n.Expression.check(ctx) ||
-		n.ExpressionList.check(ctx) ||
+		(n.Case != 4 && n.ExpressionList.check(ctx)) ||
 		n.ExpressionList2.check(ctx) {
 		return true
 	}
@@ -2543,6 +2562,28 @@ func (n *SimpleStatement) check(ctx *context) (stop bool) {
 	case 3: // Expression "++"
 		todo(n)
 	case 4: // ExpressionList ":=" ExpressionList
+		lhs := n.ExpressionList.list
+		rhs := n.ExpressionList2.list
+		if len(lhs) != len(rhs) {
+			if len(rhs) != 1 {
+				todo(n, true) // mismatch
+				break
+			}
+
+			v := rhs[0].Value
+			if v == nil {
+				break
+			}
+
+			if v.Type().Kind() != Tuple {
+				todo(n, true) // mismatch
+				break
+			}
+
+			todo(n)
+			break
+		}
+
 		todo(n)
 	default:
 		panic("internal error")

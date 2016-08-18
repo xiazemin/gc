@@ -542,7 +542,7 @@
 [PASS errorcheck] "cannot use 1.*as type string in map key|incompatible type": cannot use 1 (type int) as type string in map key testdata/gc/fixedbugs/bug397.go:12:2
 [PASS errorcheck] "duplicate field x": duplicate field x, previous declaration at testdata/gc/fixedbugs/bug412.go:10:2 testdata/gc/fixedbugs/bug412.go:11:2
 [FAIL errorcheck: missing error] "ambiguous selector t.x" testdata/gc/fixedbugs/bug412.go:15:14
-[FAIL errorcheck: error does not match] "initialization loop|depends upon itself": undefined: a testdata/gc/fixedbugs/bug413.go:11:21
+[FAIL errorcheck: missing error] "initialization loop|depends upon itself" testdata/gc/fixedbugs/bug413.go:11:45
 [FAIL errorcheck: missing error] "type T has both field and method named X|redeclares struct field name" testdata/gc/fixedbugs/bug416.go:13:20
 [FAIL errorcheck: missing error] "single-value context" testdata/gc/fixedbugs/bug418.go:16:18
 [FAIL errorcheck: missing error] "single-value context" testdata/gc/fixedbugs/bug418.go:21:24
