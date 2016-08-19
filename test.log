@@ -745,7 +745,7 @@
 [FAIL errorcheck: missing error] "len argument too large" testdata/gc/fixedbugs/issue4085a.go:15:21
 [FAIL errorcheck: missing error] "negative cap" testdata/gc/fixedbugs/issue4085a.go:16:21
 [FAIL errorcheck: missing error] "len larger than cap" testdata/gc/fixedbugs/issue4085a.go:17:21
-[FAIL errorcheck: missing error] "is not a constant|is not constant" testdata/gc/fixedbugs/issue4097.go:10:28
+[PASS errorcheck] "is not a constant|is not constant": const initializer is not a constant testdata/gc/fixedbugs/issue4097.go:10:21
 [TODO "errorcheck -0 -m"] testdata/gc/fixedbugs/issue4099.go
 [FAIL errorcheck: missing error] "invalid array index -1|index out of bounds" testdata/gc/fixedbugs/issue4232.go:14:13
 [FAIL errorcheck: missing error] "invalid slice index -1|index out of bounds" testdata/gc/fixedbugs/issue4232.go:15:13

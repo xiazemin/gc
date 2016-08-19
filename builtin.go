@@ -158,8 +158,7 @@ func builtinLen(ctx *context, call *Call) Value {
 				}
 			}
 		default:
-			//dbg("", t.Kind())
-			todo(call)
+			ctx.err(call.ArgumentList, "const initializer is not a constant")
 		}
 	default:
 		//dbg("", v.Kind())
