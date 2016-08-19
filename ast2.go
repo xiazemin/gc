@@ -192,9 +192,10 @@ func (n *ArrayType) check(ctx *context) (stop bool) {
 			return (*CompLitValue)(nil).check(ctx, cv, n.Type)
 		}
 	case 1: // '[' Expression ']' Typ
-		if n.Expression.check(ctx.setErrf(func(*gate) bool {
+		ctx = ctx.setErrf(func(*gate) bool {
 			return ctx.err(n.Expression, "invalid array bound")
-		})) || n.Typ.check(ctx) {
+		})
+		if n.Expression.check(ctx) || n.Typ.check(ctx) {
 			return true
 		}
 

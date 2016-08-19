@@ -1279,7 +1279,6 @@ func (g *gate) check(ctx *context, d Declaration) (done, stop bool) {
 		}
 
 		if f := ctx.errf; f != nil {
-			ctx.errf = nil
 			return true, f(g)
 		}
 
@@ -1351,8 +1350,11 @@ func (c *context) setNode(n Node) *context {
 }
 
 func (c *context) setErrf(f func(*gate) bool) *context {
-	if c.errf == nil {
-		c.errf = f
+	if c.errf != nil {
+		return c
 	}
-	return c
+
+	d := *c
+	d.errf = f
+	return &d
 }
