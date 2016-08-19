@@ -237,8 +237,7 @@ func (n *ArrayType) check(ctx *context) (stop bool) {
 						break
 					}
 
-					todo(n, true)
-					break
+					return ctx.err(n.Expression, "array bound must be non-negative")
 				}
 
 				return ctx.err(n.Expression, "array bound is too large")
