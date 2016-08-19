@@ -1155,7 +1155,7 @@ func (n *InterfaceType) check(ctx *context) (stop bool) {
 			case 1: //  QualifiedIdent
 				qi := id.QualifiedIdent
 				if d := qi.resolutionScope.mustLookupQI(ctx, qi, qi.fileScope); d != nil {
-					ctx.setErrf(func(g *gate) bool {
+					ctx = ctx.setErrf(func(g *gate) bool {
 						*g = gateClosed
 						return ctx.err(qi, "interface type loop involving %s", qi.str())
 					})
