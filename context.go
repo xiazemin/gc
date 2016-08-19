@@ -138,6 +138,7 @@ type Context struct {
 	bigIntMinInt     *big.Int
 	boolType         Type
 	complex128Type   Type
+	errNode          Node
 	falseValue       *constValue
 	fileCentral      *xc.FileCentral
 	float32Type      Type
@@ -339,6 +340,9 @@ func (c *Context) newPackage(importPath, directory string) *Package {
 }
 
 func (c *Context) err(n Node, format string, arg ...interface{}) bool {
+	if c.errNode != nil {
+		n = c.errNode
+	}
 	if n == nil {
 		panic("internal error")
 	}

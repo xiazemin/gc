@@ -335,12 +335,16 @@ func (n *ConstDeclaration) check(ctx *context) (stop bool) {
 		return false
 	}
 
-	ctx2 := ctx.setNode(n)
+	errNode := ctx.errNode
+	ctx.errNode = n
+	ctx2 := *ctx
 	ctx2.iota = newConstValue(newIntConst(n.iota, nil, ctx.intType, true))
-	if n.expr.check(ctx2) {
+	if n.expr.check(&ctx2) {
+		ctx.errNode = errNode
 		return true
 	}
 
+	ctx.errNode = errNode
 	if typ0 := n.typ0; typ0 != nil {
 		if typ0.check(ctx) {
 			return true
@@ -987,7 +991,12 @@ func (n *TypeDeclaration) str(w *bytes.Buffer) {
 		w.Write(dict.S(b))
 		w.WriteByte('.')
 	}
-	w.Write(dict.S(n.Name()))
+	switch id := n.Name(); id {
+	case idUint8:
+		w.WriteString("byte")
+	default:
+		w.Write(dict.S(id))
+	}
 }
 
 // VarDeclaration represents a variable declaration.
