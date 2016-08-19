@@ -1979,12 +1979,12 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 			todo(n)
 		}
 	case 5: // PrimaryExpression '[' Expression ']'
-		a := n.PrimaryExpression.Value
-		if a == nil {
+		pv := n.PrimaryExpression.Value
+		if pv == nil {
 			break
 		}
 
-		pt := a.Type()
+		pt := pv.Type()
 		if pt == nil {
 			break
 		}
@@ -1993,7 +1993,7 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 		//
 		// · a[x] is shorthand for (*a)[x]
 		if pt.Kind() == Ptr && pt.Elem().Kind() == Array {
-			a = newRuntimeValue(pt.Elem())
+			pv = newRuntimeValue(pt.Elem())
 		}
 
 		x := n.Expression.Value
@@ -2026,18 +2026,18 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 					}
 				}
 
-				break
+				return false
 			}
 
 			if x.Kind() == ConstValue {
 				constX = ctx.mustConvertConst(n.Expression, ctx.intType, x.Const())
 				if constX == nil {
-					break
+					return false
 				}
 
 				if !constX.nonNegativeInteger() {
 					todo(n.Expression, true) // < 0
-					break
+					return false
 				}
 			}
 		}
@@ -2063,10 +2063,40 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 
 			fallthrough
 		case Slice:
+			// For a of slice type S:
+			//
+			// · if x is out of range at run time, a run-time panic
+			//   occurs
+			//
+			// · a[x] is the slice element at index x and the type
+			//   of a[x] is the element type of S
 			n.Value = newRuntimeValue(pt.Elem())
 		case String:
+			// For a of string type:
+			//
+			// · a constant index must be in range if the string a
+			//   is also constant
+			//
+			// · if x is out of range at run time, a run-time panic
+			//   occurs
+			//
+			// · a[x] is the non-constant byte value at index x and
+			//   the type of a[x] is byte
+			//
+			// · a[x] may not be assigned to
 			todo(n)
 		case Map:
+			// For a of map type M:
+			//
+			// · x's type must be assignable to the key type of M
+			//
+			// · if the map contains an entry with key x, a[x] is
+			//   the map value with key x and the type of a[x] is the
+			//   value type of M
+			//
+			// · if the map is nil or does not contain such an
+			//   entry, a[x] is the zero value for the value type of
+			//   M
 			kt := pt.Key()
 			if kt == nil {
 				break
@@ -2079,7 +2109,8 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 
 			n.Value = newRuntimeValue(pt.Elem())
 		default:
-			todo(n)
+			// Otherwise a[x] is illegal.
+			todo(n, true)
 		}
 	case 6: // PrimaryExpression '[' ExpressionOpt ':' ExpressionOpt ':' ExpressionOpt ']'
 		todo(n)
