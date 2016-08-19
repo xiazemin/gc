@@ -335,14 +335,12 @@ func (n *ConstDeclaration) check(ctx *context) (stop bool) {
 		return false
 	}
 
-	iota := ctx.iota
-	ctx.iota = newConstValue(newIntConst(n.iota, nil, ctx.intType, true))
-	if n.expr.check(ctx) {
-		ctx.iota = iota
+	ctx2 := ctx.setNode(n)
+	ctx2.iota = newConstValue(newIntConst(n.iota, nil, ctx.intType, true))
+	if n.expr.check(ctx2) {
 		return true
 	}
 
-	ctx.iota = iota
 	if typ0 := n.typ0; typ0 != nil {
 		if typ0.check(ctx) {
 			return true
@@ -1357,4 +1355,12 @@ func (c *context) setErrf(f func(*gate) bool) *context {
 	d := *c
 	d.errf = f
 	return &d
+}
+
+func (c *context) mustConvertConst(n Node, t Type, d Const) Const {
+	if c.node != nil {
+		n = c.node
+	}
+
+	return c.Context.mustConvertConst(n, t, d)
 }

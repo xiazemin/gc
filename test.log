@@ -560,7 +560,8 @@
 [FAIL errorcheck: missing error] "unexported field" testdata/gc/fixedbugs/bug460.dir/b.go:16:16
 [FAIL errorcheck: missing error] "unknown T? ?field" testdata/gc/fixedbugs/bug462.go:17:15
 [PASS errorcheck] "refers to itself|definition loop": constant definition loop\n\ttestdata/gc/fixedbugs/bug463.go:12:7: a uses a testdata/gc/fixedbugs/bug463.go:12:7
-[PASS errorcheck] "refers to itself|definition loop": constant definition loop\n\ttestdata/gc/fixedbugs/bug463.go:16:2: A uses B\n\ttestdata/gc/fixedbugs/bug463.go:17:2: B uses D\n\ttestdata/gc/fixedbugs/bug463.go:18:5: D uses A testdata/gc/fixedbugs/bug463.go:16:2
+[FAIL errorcheck: extra error] constant definition loop\n\ttestdata/gc/fixedbugs/bug463.go:16:2: A uses B\n\ttestdata/gc/fixedbugs/bug463.go:17:2: B uses D\n\ttestdata/gc/fixedbugs/bug463.go:18:5: D uses A testdata/gc/fixedbugs/bug463.go:15:2
+[FAIL errorcheck: missing error] "refers to itself|definition loop" testdata/gc/fixedbugs/bug463.go:16:11
 [PASS errorcheck] "expected type|not a type": foo is not a type testdata/gc/fixedbugs/bug464.go:12:12
 [FAIL errorcheck: missing error] "mismatch" testdata/gc/fixedbugs/bug487.go:17:14
 [FAIL errorcheck: missing error] "mismatch" testdata/gc/fixedbugs/bug487.go:18:13
@@ -1728,7 +1729,7 @@
 [FAIL errorcheck: missing error] "undefined.*b" testdata/gc/typecheck.go:12:15
 [FAIL errorcheck: missing error] "undefined.*c|not enough arguments" testdata/gc/typecheck.go:17:13
 [PASS errorcheck] "constant definition loop\n.*A uses B\n.*B uses C\n.*C uses A": constant definition loop\n\ttestdata/gc/typecheckloop.go:12:7: A uses B\n\ttestdata/gc/typecheckloop.go:13:7: B uses C\n\ttestdata/gc/typecheckloop.go:14:7: C uses A testdata/gc/typecheckloop.go:12:7
-[PASS errorcheck] "constant definition loop\n.*B uses C\n.*C uses B": constant definition loop\n\ttestdata/gc/typecheckloop.go:13:7: B uses C\n\ttestdata/gc/typecheckloop.go:14:7: C uses B testdata/gc/typecheckloop.go:13:7
+[FAIL errorcheck: missing error] "constant definition loop\n.*B uses C\n.*C uses B" testdata/gc/typecheckloop.go:13:17
 [FAIL errorcheck: missing error] "duplicate" testdata/gc/typeswitch2.go:18:12
 [FAIL errorcheck: missing error] "duplicate" testdata/gc/typeswitch2.go:22:18
 [FAIL errorcheck: missing error] "duplicate" testdata/gc/typeswitch2.go:32:5
