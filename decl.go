@@ -28,6 +28,7 @@ const (
 	gateReady = iota
 	gateOpen
 	gateClosed
+	gateCycle
 )
 
 // Values of ScopeKind
@@ -1322,7 +1323,7 @@ func (g *gate) check(ctx *context, d Declaration) (done, stop bool) {
 				return true, ctx.err(node, "%s\n%s", prolog, strings.Join(a, "\n"))
 			}
 		}
-	case gateClosed:
+	case gateClosed, gateCycle:
 		return true, false
 	}
 	panic("internal error")

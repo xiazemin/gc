@@ -192,7 +192,7 @@ func (n *ArrayType) check(ctx *context) (stop bool) {
 			return (*CompLitValue)(nil).check(ctx, cv, n.Type)
 		}
 	case 1: // '[' Expression ']' Typ
-		ctx = ctx.setErrf(func(*gate) bool {
+		ctx = ctx.setErrf(func(g *gate) bool {
 			return ctx.err(n.Expression, "invalid array bound")
 		})
 		if n.Expression.check(ctx) || n.Typ.check(ctx) {
@@ -1155,7 +1155,7 @@ func (n *InterfaceType) check(ctx *context) (stop bool) {
 				qi := id.QualifiedIdent
 				if d := qi.resolutionScope.mustLookupQI(ctx, qi, qi.fileScope); d != nil {
 					ctx = ctx.setErrf(func(g *gate) bool {
-						*g = gateClosed
+						*g = gateCycle
 						return ctx.err(qi, "interface type loop involving %s", qi.str())
 					})
 
