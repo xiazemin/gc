@@ -698,7 +698,7 @@ func (n *TypeDeclaration) check(ctx *context) (stop bool) {
 	defer n.guard.done(ctx)
 
 	if t0 := n.typ0; t0 != nil && t0.Case == 9 { // StructType
-		ctx.setNode(t0.StructType.Token2)
+		ctx = ctx.setNode(t0.StructType.Token2)
 	}
 
 	t0 := n.typ0
@@ -1259,10 +1259,6 @@ func (g *gate) check(ctx *context, d Declaration) (done, stop bool) {
 		*g = gateOpen
 		return false, false
 	case gateOpen:
-		defer func() {
-			ctx.node = nil
-		}()
-
 		stack := ctx.stack
 		if d != nil {
 			stack = append(ctx.stack, d)
@@ -1345,10 +1341,13 @@ type context struct {
 func (c *context) pop() { c.stack = c.stack[:len(c.stack)-1] }
 
 func (c *context) setNode(n Node) *context {
-	if c.node == nil {
-		c.node = n
+	if c.node != nil {
+		return c
 	}
-	return c
+
+	d := *c
+	d.node = n
+	return &d
 }
 
 func (c *context) setErrf(f func(*gate) bool) *context {

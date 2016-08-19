@@ -1082,7 +1082,6 @@
 [FAIL errorcheck: missing error] "invalid operation.*mismatched types" testdata/gc/fixedbugs/issue9370.go:122:12
 [FAIL errorcheck: missing error] "invalid operation.*mismatched types" testdata/gc/fixedbugs/issue9370.go:123:12
 [FAIL errorcheck: missing error] "invalid operation.*mismatched types" testdata/gc/fixedbugs/issue9370.go:124:12
-[FAIL errorcheck: extra error] invalid recursive type foo testdata/gc/fixedbugs/issue9432.go:12:6
 [PASS errorcheck] "invalid recursive type foo": invalid recursive type foo testdata/gc/fixedbugs/issue9432.go:15:1
 [FAIL errorcheck: missing error] "cannot append \[\]int value to \[\]int" testdata/gc/fixedbugs/issue9521.go:16:18
 [FAIL errorcheck: missing error] "cannot append float64 value to \[\]int" testdata/gc/fixedbugs/issue9521.go:17:18
