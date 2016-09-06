@@ -1994,8 +1994,11 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 			}
 
 			m := t.MethodByName(nm.Val)
+			if m == nil && t.Kind() == Ptr {
+				m = t.Elem().MethodByName(nm.Val)
+			}
 			if m == nil {
-				todo(n)
+				todo(n, true)
 				break
 			}
 
@@ -2005,6 +2008,9 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 			}
 
 			n.Value = newRuntimeValue(m.Type)
+			if m.Type != nil {
+				n.flags = n.flags | m.Type.flags()
+			}
 		default:
 			//dbg("", v.Kind())
 			todo(n)
