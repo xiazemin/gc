@@ -1078,8 +1078,8 @@
 [PASS errorcheck] "cannot use _ as value": cannot use _ as value testdata/gc/fixedbugs/issue9370.go:116:11
 [PASS errorcheck] "cannot use _ as value": cannot use _ as value testdata/gc/fixedbugs/issue9370.go:117:11
 [PASS errorcheck] "cannot use _ as value": cannot use _ as value testdata/gc/fixedbugs/issue9370.go:119:6
-[FAIL errorcheck: missing error] "invalid operation.*mismatched types" testdata/gc/fixedbugs/issue9370.go:121:12
-[FAIL errorcheck: missing error] "invalid operation.*mismatched types" testdata/gc/fixedbugs/issue9370.go:122:12
+[PASS errorcheck] "invalid operation.*mismatched types": invalid operation: ^ (mismatched types interface{} and main.C) testdata/gc/fixedbugs/issue9370.go:121:8
+[PASS errorcheck] "invalid operation.*mismatched types": invalid operation: ^ (mismatched types main.C and interface{}) testdata/gc/fixedbugs/issue9370.go:122:8
 [FAIL errorcheck: missing error] "invalid operation.*mismatched types" testdata/gc/fixedbugs/issue9370.go:123:12
 [FAIL errorcheck: missing error] "invalid operation.*mismatched types" testdata/gc/fixedbugs/issue9370.go:124:12
 [PASS errorcheck] "invalid recursive type foo": invalid recursive type foo testdata/gc/fixedbugs/issue9432.go:15:1
