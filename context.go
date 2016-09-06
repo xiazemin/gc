@@ -168,6 +168,7 @@ type Context struct {
 	tags             map[string]struct{}
 	test             *testContext
 	trueValue        *constValue
+	uint8Type        Type
 	uintptrType      Type
 	universe         *Scope
 	untypedBoolType  Type
@@ -288,7 +289,7 @@ func (c *Context) declareBuiltins() error {
 		{idUint16, Uint16, 2, 2, 2, nil},
 		{idUint32, Uint32, 4, 4, 4, nil},
 		{idUint64, Uint64, 8, 8, 8, nil},
-		{idUint8, Uint8, 1, 1, 1, nil},
+		{idUint8, Uint8, 1, 1, 1, &c.uint8Type},
 		{idUintptr, Uintptr, c.model.PtrBytes, c.model.PtrBytes, uint64(c.model.PtrBytes), &c.uintptrType},
 	} {
 		t := xc.Token{Val: v.name}

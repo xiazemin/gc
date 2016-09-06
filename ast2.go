@@ -2117,7 +2117,13 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 			//   the type of a[x] is byte
 			//
 			// · a[x] may not be assigned to
-			todo(n)
+			switch pv.Kind() {
+			case RuntimeValue:
+				n.Value = newRuntimeValue(ctx.uint8Type)
+			default:
+				//dbg("", pv.Kind())
+				todo(n)
+			}
 		case Map:
 			// For a of map type M:
 			//
