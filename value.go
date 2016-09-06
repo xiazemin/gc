@@ -703,7 +703,7 @@ func (v *runtimeValue) xor(n Node, op Value) Value {
 			break
 		}
 
-		if !ot.ConvertibleTo(v.Type()) {
+		if !ot.AssignableTo(v.Type()) {
 			todo(n, true) // type mismatch
 			break
 		}
