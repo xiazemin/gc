@@ -1632,8 +1632,36 @@ func (c *floatConst) ConvertibleTo(u Type) bool {
 	// non-constant x applies in this case.
 }
 
+func (c *floatConst) add0(n Node, t Type, untyped bool, op Const) Const {
+	ctx := t.context()
+	var d big.Float
+	d.Add(c.bigVal, op.(*floatConst).bigVal)
+	if untyped {
+		t = nil
+	}
+	e := newFloatConst(0, &d, ctx.float64Type, true)
+	if e.normalize() == nil {
+		todo(n, true) // {over,under}flow
+		return nil
+	}
+
+	return ctx.mustConvertConst(n, t, e)
+}
+
 func (c *floatConst) add(n Node, op Value) Value {
-	todo(n)
+	ctx := op.Type().context()
+	switch op.Kind() {
+	case ConstValue:
+		t, untyped, a, b := ctx.arithmeticBinOpShape(c, op.Const(), n)
+		if t != nil {
+			if d := a.sub0(n, t, untyped, b); d != nil {
+				return newConstValue(d)
+			}
+		}
+	default:
+		//dbg("", op.Kind())
+		todo(n)
+	}
 	return nil
 }
 
