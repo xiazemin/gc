@@ -2554,7 +2554,8 @@ func (c *intConst) xor0(n Node, t Type, untyped bool, op Const) Const {
 }
 
 func (c *intConst) xor(n Node, op Value) Value {
-	ctx := op.Type().context()
+	ot := op.Type()
+	ctx := ot.context()
 	switch op.Kind() {
 	case ConstValue:
 		t, untyped, a, b := ctx.arithmeticBinOpShape(c, op.Const(), n)
@@ -2564,14 +2565,14 @@ func (c *intConst) xor(n Node, op Value) Value {
 			}
 		}
 	case RuntimeValue:
-		if !op.Type().IntegerType() {
-			todo(n, true) // need integer
+		if !ot.IntegerType() {
+			ctx.err(n, "invalid operation: ^ (mismatched types %s and %s)", c.Type(), ot)
 			break
 		}
 
 		todo(n)
 	default:
-		dbg("", op.Kind())
+		//dbg("", op.Kind())
 		todo(n)
 	}
 	return nil
