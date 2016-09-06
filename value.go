@@ -2587,6 +2587,11 @@ func (c *intConst) xor(n Node, op Value) Value {
 			break
 		}
 
+		if !c.untyped && !c.Type().AssignableTo(ot) {
+			todo(n, true) // type mismatch
+			break
+		}
+
 		todo(n)
 	default:
 		//dbg("", op.Kind())
