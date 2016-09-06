@@ -713,7 +713,7 @@ func (v *runtimeValue) xor(n Node, op Value) Value {
 			break
 		}
 
-		todo(n)
+		return newRuntimeValue(v.Type())
 	case RuntimeValue:
 		if !v.Type().Identical(ot) {
 			ctx.err(n, "invalid operation: ^ (mismatched types %s and %s)", v.Type(), ot)
