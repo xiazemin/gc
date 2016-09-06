@@ -703,7 +703,7 @@ func (v *runtimeValue) xor(n Node, op Value) Value {
 			break
 		}
 
-		if !ot.AssignableTo(v.Type()) {
+		if !op.Const().Untyped() && !ot.AssignableTo(v.Type()) {
 			todo(n, true) // type mismatch
 			break
 		}
@@ -2592,7 +2592,7 @@ func (c *intConst) xor(n Node, op Value) Value {
 			break
 		}
 
-		todo(n)
+		return newRuntimeValue(ot)
 	default:
 		//dbg("", op.Kind())
 		todo(n)
