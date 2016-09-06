@@ -2563,8 +2563,15 @@ func (c *intConst) xor(n Node, op Value) Value {
 				return newConstValue(d)
 			}
 		}
+	case RuntimeValue:
+		if !op.Type().IntegerType() {
+			todo(n, true) // need integer
+			break
+		}
+
+		todo(n)
 	default:
-		//dbg("", op.Kind())
+		dbg("", op.Kind())
 		todo(n)
 	}
 	return nil
