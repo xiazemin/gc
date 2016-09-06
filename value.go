@@ -8,7 +8,12 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"strings"
 	"unicode"
+)
+
+const (
+	digits = 6
 )
 
 var (
@@ -1696,7 +1701,21 @@ func (c *floatConst) String() string {
 		return bigFloatString(c.bigVal)
 	}
 
-	return fmt.Sprint(c.val)
+	s := fmt.Sprint(c.val)
+	d := strings.IndexByte(s, '.')
+	if d < 0 {
+		return s
+	}
+
+	e := strings.IndexByte(s, 'e')
+	if e < 0 {
+		e = len(s)
+	}
+	f := e - d - 1
+	if f > 5 {
+		f = 5
+	}
+	return s[:d+1] + s[d+1:d+1+f] + s[e:]
 }
 
 func (c *floatConst) convert(t Type) Const {
@@ -1832,11 +1851,6 @@ func (c *floatConst) mul0(n Node, t Type, untyped bool, op Const) Const {
 	return ctx.mustConvertConst(n, t, e)
 }
 
-func (c *floatConst) neq(n Node, op Value) Value {
-	todo(n)
-	return nil
-}
-
 func (c *floatConst) mul(n Node, op Value) Value {
 	ctx := op.Type().context()
 	switch op.Kind() {
@@ -1863,13 +1877,46 @@ func (c *floatConst) neg(ctx *Context, n Node) Value {
 	return newConstValue(newFloatConst(-c.val, nil, c.Type(), c.Untyped()))
 }
 
+func (c *floatConst) neq(n Node, op Value) Value {
+	todo(n)
+	return nil
+}
+
 func (c *floatConst) rsh(n Node, op Value) Value {
 	todo(n)
 	return nil
 }
 
+func (c *floatConst) sub0(n Node, t Type, untyped bool, op Const) Const {
+	ctx := t.context()
+	var d big.Float
+	d.Sub(c.bigVal, op.(*floatConst).bigVal)
+	if untyped {
+		t = nil
+	}
+	e := newFloatConst(0, &d, ctx.float64Type, true)
+	if e.normalize() == nil {
+		todo(n, true) // {over,under}flow
+		return nil
+	}
+
+	return ctx.mustConvertConst(n, t, e)
+}
+
 func (c *floatConst) sub(n Node, op Value) Value {
-	todo(n)
+	ctx := op.Type().context()
+	switch op.Kind() {
+	case ConstValue:
+		t, untyped, a, b := ctx.arithmeticBinOpShape(c, op.Const(), n)
+		if t != nil {
+			if d := a.sub0(n, t, untyped, b); d != nil {
+				return newConstValue(d)
+			}
+		}
+	default:
+		//dbg("", op.Kind())
+		todo(n)
+	}
 	return nil
 }
 
@@ -2869,7 +2916,6 @@ func (s stringIDs) s() []byte {
 }
 
 func bigFloatString(a *big.Float) string {
-	const digits = 6
 	var m2 big.Float
 	e2 := a.MantExp(&m2)
 	neg := m2.Sign() < 0
