@@ -224,8 +224,8 @@ File:
 		lx.pkg.Files = append(lx.pkg.Files, lhs)
 	}
 
-/*yy:field	Value		Value */
-/*yy:field	lenPoisoned	bool */
+/*yy:field	Value	Value */
+/*yy:field	flags	flags */
 Argument:
 	Expression
 |       TypeLiteral
@@ -358,7 +358,7 @@ Body:
 		lx.popScope()
 	}
 
-/*yy:field	lenPoisoned	bool */
+/*yy:field	flags	flags */
 Call:
 	'(' ')'
 |       '(' ArgumentList CommaOpt ')'
@@ -440,8 +440,8 @@ ElseOpt:
 	/* empty */
 |       "else" Block
 
-/*yy:field	Value		Value */
-/*yy:field	lenPoisoned	bool */
+/*yy:field	Value	Value */
+/*yy:field	flags	flags */
 Expression:
 	UnaryExpression
 |       Expression '%' Expression
@@ -465,8 +465,8 @@ Expression:
 |       Expression ">>" Expression
 |       Expression "<-" Expression
 
-/*yy:field	Value		Value */
-/*yy:field	lenPoisoned	bool */
+/*yy:field	Value	Value */
+/*yy:field	flags	flags */
 ExpressionOpt:
 	/* empty */
 |       Expression
@@ -684,7 +684,7 @@ MapType:
 
 /*yy:field	Value		Value */
 /*yy:field	fileScope	*Scope */
-/*yy:field	lenPoisoned	bool */
+/*yy:field	flags		flags */
 /*yy:field	resolutionScope	*Scope	// Where to search for case 4: IDENTIFIER. */
 Operand:
 	'(' Expression ')'
@@ -739,8 +739,8 @@ Parameters:
 	'(' ')'
 |       '(' ParameterDeclList CommaOpt ')'
 
-/*yy:field	Value		Value */
-/*yy:field	lenPoisoned	bool */
+/*yy:field	Value	Value */
+/*yy:field	flags	flags */
 PrimaryExpression:
 	Operand
 |       CompLitType LBraceCompLitValue
@@ -1094,8 +1094,8 @@ TypeSpecList:
 	TypeSpec
 |       TypeSpecList ';' TypeSpec
 
-/*yy:field	Value		Value */
-/*yy:field	lenPoisoned	bool */
+/*yy:field	Value	Value */
+/*yy:field	flags	flags */
 UnaryExpression:
 	'!' UnaryExpression
 |       '&' UnaryExpression

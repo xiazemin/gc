@@ -258,9 +258,9 @@ func testLoad(t testing.TB) {
 	)
 	if _, ok := t.(*testing.T); ok {
 		t.Log(len(m))
-	}
-	if err != nil {
-		t.Fatal(errStr(err))
+		if err != nil {
+			t.Fatal(errStr(err))
+		}
 	}
 }
 

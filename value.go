@@ -1716,7 +1716,6 @@ func (c *floatConst) convert(t Type) Const {
 	default:
 		panic("internal error")
 	}
-	return nil
 }
 
 func (c *floatConst) div0(n Node, t Type, untyped bool, op Const) Const {

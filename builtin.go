@@ -5,7 +5,7 @@
 package gc
 
 func builtinCap(ctx *context, call *Call) Value {
-	args, lenPoisoned, ddd := call.args()
+	args, flags, ddd := call.args()
 	if ddd {
 		todo(call.ArgumentList, true) // ... invalid
 	}
@@ -37,7 +37,7 @@ func builtinCap(ctx *context, call *Call) Value {
 		case Array:
 			if len := t.Len(); len >= 0 {
 				switch {
-				case lenPoisoned:
+				case flags.lenPoisoned():
 					return newRuntimeValue(ctx.intType)
 				default:
 					return newConstValue(newIntConst(len, nil, ctx.intType, true))
@@ -111,7 +111,7 @@ func builtinComplex(ctx *context, call *Call) Value {
 }
 
 func builtinLen(ctx *context, call *Call) Value {
-	args, lenPoisoned, ddd := call.args()
+	args, flags, ddd := call.args()
 	if ddd {
 		todo(call.ArgumentList, true) // ... invalid
 	}
@@ -151,7 +151,7 @@ func builtinLen(ctx *context, call *Call) Value {
 		case Array:
 			if len := t.Len(); len >= 0 {
 				switch {
-				case lenPoisoned:
+				case flags.lenPoisoned():
 					return newRuntimeValue(ctx.intType)
 				default:
 					return newConstValue(newIntConst(len, nil, ctx.intType, true))

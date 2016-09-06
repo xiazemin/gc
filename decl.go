@@ -20,6 +20,7 @@ var (
 	_ Declaration = (*FuncDeclaration)(nil)
 	_ Declaration = (*ImportDeclaration)(nil)
 	_ Declaration = (*LabelDeclaration)(nil)
+	_ Declaration = (*ParameterDeclaration)(nil)
 	_ Declaration = (*TypeDeclaration)(nil)
 	_ Declaration = (*VarDeclaration)(nil)
 )
@@ -31,6 +32,16 @@ const (
 	gateCycle
 )
 
+const (
+	flagLenPoisoned flags = 1 << iota
+	flagHasIota
+)
+
+type flags int
+
+func (f flags) iotaDependent() bool { return f&flagHasIota != 0 }
+func (f flags) lenPoisoned() bool   { return f&flagLenPoisoned != 0 }
+
 // Values of ScopeKind
 const (
 	UniverseScope ScopeKind = iota
@@ -41,10 +52,11 @@ const (
 
 // Declaration is a named entity, eg. a type, variable, function, etc.
 type Declaration interface {
-	Node
 	Name() int // Name ID.
+	Node
 	ScopeStart() token.Pos
 	check(ctx *context) (stop bool)
+	flags() flags
 	//TODO Exported() bool
 }
 
@@ -324,8 +336,16 @@ func newConstDeclaration(nm xc.Token, typ0 *Typ, expr *Expression, iota int64, s
 	}
 }
 
+func (n *ConstDeclaration) flags() flags {
+	if n.expr != nil {
+		return n.expr.flags
+	}
+
+	return 0
+}
+
 func (n *ConstDeclaration) check(ctx *context) (stop bool) {
-	done, stop := n.guard.check(ctx, n)
+	done, stop := n.guard.check(ctx, n, nil)
 	if done || stop {
 		return stop
 	}
@@ -440,8 +460,16 @@ func newFieldDeclaration(nm xc.Token, typ0 *Typ, isAnonymousPtr bool, qi *Qualif
 	}
 }
 
+func (n *FieldDeclaration) flags() flags {
+	if n.Type != nil {
+		return n.Type.flags()
+	}
+
+	return 0
+}
+
 func (n *FieldDeclaration) check(ctx *context) (stop bool) {
-	done, stop := n.guard.check(ctx, nil)
+	done, stop := n.guard.check(ctx, nil, n.Type)
 	if done || stop {
 		return stop
 	}
@@ -496,13 +524,21 @@ func newFuncDeclaration(nm xc.Token, rx *ReceiverOpt, sig *Signature, ifaceMetho
 	}
 }
 
+func (n *FuncDeclaration) flags() flags {
+	if n.Type != nil {
+		return n.Type.flags()
+	}
+
+	return 0
+}
+
 func (n *FuncDeclaration) check(ctx *context) (stop bool) {
 	stack := ctx.stack
 	ctx.stack = nil
 
 	defer func() { ctx.stack = stack }()
 
-	done, stop := n.guard.check(ctx, nil)
+	done, stop := n.guard.check(ctx, nil, n.Type)
 	if done || stop {
 		return stop
 	}
@@ -577,6 +613,8 @@ func (n *ImportDeclaration) check(*context) (stop bool) {
 	return false
 }
 
+func (n *ImportDeclaration) flags() flags { return 0 }
+
 // Pos implements Declaration.
 func (n *ImportDeclaration) Pos() token.Pos { return n.pos }
 
@@ -597,9 +635,8 @@ func newLabelDeclaration(tok xc.Token) *LabelDeclaration {
 	}
 }
 
-func (n *LabelDeclaration) check(*context) bool {
-	panic("internal error")
-}
+func (n *LabelDeclaration) flags() flags        { panic("internal error") }
+func (n *LabelDeclaration) check(*context) bool { panic("internal error") }
 
 // Pos implements Declaration.
 func (n *LabelDeclaration) Pos() token.Pos { return n.tok.Pos() }
@@ -631,8 +668,16 @@ func newParamaterDeclaration(nm xc.Token, typ0 *Typ, isVariadic bool, scopeStart
 	}
 }
 
+func (n *ParameterDeclaration) flags() flags {
+	if n.Type != nil {
+		return n.Type.flags()
+	}
+
+	return 0
+}
+
 func (n *ParameterDeclaration) check(ctx *context) (stop bool) {
-	done, stop := n.guard.check(ctx, nil)
+	done, stop := n.guard.check(ctx, nil, n.Type)
 	if done || stop {
 		return stop
 	}
@@ -655,6 +700,7 @@ func (n *ParameterDeclaration) ScopeStart() token.Pos { return n.scopeStart }
 
 // TypeDeclaration represents a type declaration.
 type TypeDeclaration struct {
+	flgs       flags
 	guard      gate
 	isExported bool
 	methods    *Scope // Type methods, if any, nil otherwise.
@@ -692,8 +738,10 @@ func newTypeDeclaration(lx *lexer, nm xc.Token, typ0 *Typ) *TypeDeclaration {
 	return t
 }
 
+func (n *TypeDeclaration) flags() flags { return n.flgs }
+
 func (n *TypeDeclaration) check(ctx *context) (stop bool) {
-	done, stop := n.guard.check(ctx, n)
+	done, stop := n.guard.check(ctx, n, nil)
 	if done || stop {
 		return stop
 	}
@@ -718,6 +766,7 @@ func (n *TypeDeclaration) check(ctx *context) (stop bool) {
 		return false
 	}
 
+	n.flgs = t.flags()
 	k := t.Kind()
 	if k == Invalid {
 		return false
@@ -1025,8 +1074,16 @@ func newVarDeclaration(tupleIndex int, nm xc.Token, typ0 *Typ, expr *Expression,
 	}
 }
 
+func (n *VarDeclaration) flags() flags {
+	if n.Type != nil {
+		return n.Type.flags()
+	}
+
+	return 0
+}
+
 func (n *VarDeclaration) check(ctx *context) (stop bool) {
-	done, stop := n.guard.check(ctx, n)
+	done, stop := n.guard.check(ctx, n, n.Type)
 	if done || stop {
 		return stop
 	}
@@ -1258,8 +1315,23 @@ func varDecl(lx *lexer, lhs, rhs Node, typ0 *Typ, op string, maxLHS, maxRHS int)
 
 type gate int
 
-func (g *gate) check(ctx *context, d Declaration) (done, stop bool) {
-	switch *g {
+func (g *gate) check(ctx *context, d Declaration, t Type) (done, stop bool) {
+	gv := *g
+	//if d != nil && position(d.Pos()).Filename != "" {
+	//dbg("%s: gate %#x, flags %0bb", position(d.Pos()), gv, d.flags())
+	//}
+	var flags flags
+	if t != nil {
+		flags = t.flags()
+	}
+	if d != nil {
+		flags = flags | d.flags()
+	}
+	if gv == gateClosed && flags.iotaDependent() {
+		//dbg("%s: gate %#x, flags %0b, reopen", position(d.Pos()), gv, d.flags())
+		gv = gateReady
+	}
+	switch gv {
 	case gateReady:
 		if d != nil {
 			ctx.stack = append(ctx.stack, d)

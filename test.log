@@ -990,8 +990,8 @@
 [PASS errorcheck] "is not (a )?constant": const initializer is not a constant testdata/gc/fixedbugs/issue7760.go:24:11
 [PASS errorcheck] "is not (a )?constant": const initializer is not a constant testdata/gc/fixedbugs/issue7760.go:25:11
 [PASS errorcheck] "constant 256 overflows byte": constant 256 overflows byte testdata/gc/fixedbugs/issue8183.go:15:2
-[FAIL errorcheck: missing error] "array bound must be non-negative" "const initializer len\(composite literal\) is not a constant" testdata/gc/fixedbugs/issue8183.go:21:4
-[FAIL errorcheck: missing error] "array bound must be non-negative" "const initializer len\(composite literal\) is not a constant" testdata/gc/fixedbugs/issue8183.go:22:4
+[PASS errorcheck] "array bound must be non-negative" "const initializer len\(composite literal\) is not a constant": array bound must be non-negative testdata/gc/fixedbugs/issue8183.go:21:2
+[PASS errorcheck] "array bound must be non-negative" "const initializer len\(composite literal\) is not a constant": array bound must be non-negative testdata/gc/fixedbugs/issue8183.go:22:2
 [FAIL errorcheck: missing error] "invalid operation: x[+][+]" testdata/gc/fixedbugs/issue8311.go:14:6
 [FAIL errorcheck: missing error] "not enough arguments in call to method expression Fooer.Foo" testdata/gc/fixedbugs/issue8385.go:30:18
 [FAIL errorcheck: missing error] "not enough arguments in call to g\(\)" testdata/gc/fixedbugs/issue8385.go:35:11
