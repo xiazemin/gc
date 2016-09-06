@@ -709,7 +709,7 @@ func (v *runtimeValue) xor(n Node, op Value) Value {
 		}
 
 		if !v.Type().IntegerType() {
-			todo(n, true) // type mismatch
+			ctx.err(n, "invalid operation: ^ (mismatched types %s and %s)", v.Type(), ot)
 			break
 		}
 

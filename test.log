@@ -1081,7 +1081,7 @@
 [PASS errorcheck] "invalid operation.*mismatched types": invalid operation: ^ (mismatched types interface{} and main.C) testdata/gc/fixedbugs/issue9370.go:121:8
 [PASS errorcheck] "invalid operation.*mismatched types": invalid operation: ^ (mismatched types main.C and interface{}) testdata/gc/fixedbugs/issue9370.go:122:8
 [PASS errorcheck] "invalid operation.*mismatched types": invalid operation: ^ (mismatched types int and interface{}) testdata/gc/fixedbugs/issue9370.go:123:8
-[FAIL errorcheck: missing error] "invalid operation.*mismatched types" testdata/gc/fixedbugs/issue9370.go:124:12
+[PASS errorcheck] "invalid operation.*mismatched types": invalid operation: ^ (mismatched types interface{} and int) testdata/gc/fixedbugs/issue9370.go:124:8
 [PASS errorcheck] "invalid recursive type foo": invalid recursive type foo testdata/gc/fixedbugs/issue9432.go:15:1
 [FAIL errorcheck: missing error] "cannot append \[\]int value to \[\]int" testdata/gc/fixedbugs/issue9521.go:16:18
 [FAIL errorcheck: missing error] "cannot append float64 value to \[\]int" testdata/gc/fixedbugs/issue9521.go:17:18
