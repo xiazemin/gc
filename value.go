@@ -697,6 +697,23 @@ func (v *runtimeValue) xor(n Node, op Value) Value {
 	ctx := v.Type().context()
 	ot := op.Type()
 	switch op.Kind() {
+	case ConstValue:
+		if !ot.IntegerType() {
+			todo(n, true) // need int
+			break
+		}
+
+		if !ot.ConvertibleTo(v.Type()) {
+			todo(n, true) // type mismatch
+			break
+		}
+
+		if !v.Type().IntegerType() {
+			todo(n, true) // type mismatch
+			break
+		}
+
+		todo(n)
 	case RuntimeValue:
 		if !v.Type().Identical(ot) {
 			ctx.err(n, "invalid operation: ^ (mismatched types %s and %s)", v.Type(), ot)
