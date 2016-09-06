@@ -1654,7 +1654,7 @@ func (c *floatConst) add(n Node, op Value) Value {
 	case ConstValue:
 		t, untyped, a, b := ctx.arithmeticBinOpShape(c, op.Const(), n)
 		if t != nil {
-			if d := a.sub0(n, t, untyped, b); d != nil {
+			if d := a.add0(n, t, untyped, b); d != nil {
 				return newConstValue(d)
 			}
 		}

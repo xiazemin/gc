@@ -1086,13 +1086,14 @@
 [FAIL errorcheck: missing error] "cannot append \[\]int value to \[\]int" testdata/gc/fixedbugs/issue9521.go:16:18
 [FAIL errorcheck: missing error] "cannot append float64 value to \[\]int" testdata/gc/fixedbugs/issue9521.go:17:18
 [FAIL errorcheck: missing error] "must be a slice|must be slice" testdata/gc/fixedbugs/issue9634.go:17:19
-[FAIL errorcheck: missing error] "constant 3\.40282e\+38 overflows float32" testdata/gc/float_lit3.go:32:44
-[FAIL errorcheck: extra error] constant -340282356779733661637539395458142568449 overflows float32 testdata/gc/float_lit3.go:34:10
+[FAIL errorcheck: extra error] constant 340282356779733661637539395458142568447 overflows float32 testdata/gc/float_lit3.go:30:10
+[FAIL errorcheck: extra error] constant 3.40282e+38 overflows float32 testdata/gc/float_lit3.go:31:10
+[PASS errorcheck] "constant 3\.40282e\+38 overflows float32": constant 3.40282e+38 overflows float32 testdata/gc/float_lit3.go:32:10
+[FAIL errorcheck: extra error] constant -340282356779733661637539395458142568447 overflows float32 testdata/gc/float_lit3.go:34:10
 [FAIL errorcheck: extra error] constant -3.40282e+38 overflows float32 testdata/gc/float_lit3.go:35:10
 [PASS errorcheck] "constant -3\.40282e\+38 overflows float32": constant -3.40282e+38 overflows float32 testdata/gc/float_lit3.go:36:10
-[FAIL errorcheck: missing error] "constant 1\.79769e\+308 overflows float64" testdata/gc/float_lit3.go:42:45
-[FAIL errorcheck: missing error] "constant 1\.79769e\+308 overflows float64" testdata/gc/float_lit3.go:43:45
-[FAIL errorcheck: extra error] constant -1.79769e+308 overflows float64 testdata/gc/float_lit3.go:45:10
+[PASS errorcheck] "constant 1\.79769e\+308 overflows float64": constant 1.79769e+308 overflows float64 testdata/gc/float_lit3.go:42:10
+[PASS errorcheck] "constant 1\.79769e\+308 overflows float64": constant 1.79769e+308 overflows float64 testdata/gc/float_lit3.go:43:10
 [PASS errorcheck] "constant -1\.79769e\+308 overflows float64": constant -1.79769e+308 overflows float64 testdata/gc/float_lit3.go:46:10
 [PASS errorcheck] "constant -1\.79769e\+308 overflows float64": constant -1.79769e+308 overflows float64 testdata/gc/float_lit3.go:47:10
 [PASS errorcheck] "duplicate argument a|definition": duplicate argument a testdata/gc/func1.go:17:17
