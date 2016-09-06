@@ -2274,7 +2274,7 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 					if x, ok := d.(*FuncDeclaration); ok && x.unsafe {
 						switch d.Name() {
 						case idAlignof:
-							todo(n)
+							n.Value = alignof(ctx, n.Call)
 						case idOffsetof:
 							n.Value = offsetof(ctx, n.Call)
 						case idSizeof:
