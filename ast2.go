@@ -2259,9 +2259,9 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 					case idPanic:
 						todo(n)
 					case idPrint:
-						todo(n)
+						n.Value = builtinPrint(ctx, n.Call, false)
 					case idPrintln:
-						todo(n)
+						n.Value = builtinPrint(ctx, n.Call, true)
 					case idReal:
 						n.Value = builtinReal(ctx, n.Call)
 					case idRecover:

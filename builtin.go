@@ -275,6 +275,11 @@ func builtinNew(ctx *context, call *Call) Value {
 	return nil
 }
 
+func builtinPrint(ctx *context, call *Call, nl bool) Value {
+	//TODO args, _, ddd := call.args()
+	return newRuntimeValue(ctx.voidType)
+}
+
 func builtinReal(ctx *context, call *Call) Value {
 	args, _, ddd := call.args()
 	if ddd {
