@@ -3239,7 +3239,7 @@ func (n *UnaryExpression) check(ctx *context) (stop bool) {
 			todo(n)
 		}
 	case 6: // "<-" UnaryExpression
-		n.flags = flagLenPoisoned
+		n.flags = n.flags | flagLenPoisoned
 		switch v.Kind() {
 		case RuntimeValue:
 			t := v.Type()
