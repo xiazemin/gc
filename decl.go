@@ -237,6 +237,21 @@ func (s *Scope) mustLookup(ctx *context, t xc.Token, fileScope *Scope) (d Declar
 	return d
 }
 
+func (s *Scope) mustLookupLabel(ctx *context, t xc.Token) {
+	for {
+		if d := s.Labels[t.Val]; d != nil {
+			return
+		}
+
+		if s.isFnScope {
+			todo(t, true) // undefined
+			return
+		}
+
+		s = s.Parent
+	}
+}
+
 func (s *Scope) mustLookupLocalTLDType(ctx *context, t xc.Token) *TypeDeclaration {
 	d, s := s.lookup2(t, nil)
 	if s.Kind != PackageScope {
