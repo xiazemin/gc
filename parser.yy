@@ -888,6 +888,9 @@ StatementNonDecl:
 |       ForStatement
 |       "go" Expression
 |       "goto" IDENTIFIER
+	{
+		lhs.resolutionScope = lx.resolutionScope
+	}
 |       IDENTIFIER ':' Statement
 	{
 		lx.declarationScope.declare(lx, newLabelDeclaration(lhs.Token))

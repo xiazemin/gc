@@ -2758,9 +2758,17 @@ func (n *StatementNonDecl) check(ctx *context) (stop bool) {
 	case 5: // "go" Expression
 		todo(n)
 	case 6: // "goto" IDENTIFIER
-		todo(n)
+		t := n.Token2
+		nm := t.Val
+		_, ok := n.resolutionScope.Labels[nm]
+		if !ok {
+			todo(t, true) // undefined label
+			break
+		}
+
+		//TODO verify valid target
 	case 7: // IDENTIFIER ':' Statement
-		todo(n)
+		return n.Statement.check(ctx)
 	case 8: // IfStatement
 		todo(n)
 	case 9: // "return" ExpressionListOpt
