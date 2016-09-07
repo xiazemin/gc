@@ -2257,7 +2257,7 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 					case idNew:
 						n.Value = builtinNew(ctx, n.Call)
 					case idPanic:
-						todo(n)
+						n.Value = builtinPanic(ctx, n.Call)
 					case idPrint:
 						n.Value = builtinPrint(ctx, n.Call, false)
 					case idPrintln:
