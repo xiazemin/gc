@@ -46,6 +46,9 @@ var (
 
 	floatZero    = 0.
 	floatNegZero = -1 / (1 / floatZero)
+
+	// see https://github.com/golang/go/blob/master/test/float_lit2.go#L21
+	bigFloatHalfwayPointFloat32, _ = big.NewFloat(0).SetPrec(DefaultFloatConstPrec).SetString("340282356779733661637539395458142568448")
 )
 
 // Values of type ConstKind.
@@ -971,11 +974,19 @@ func (c *constBase) representableFloatFromBigComplex(v *bigComplex, t Type) Cons
 
 func (c *constBase) representableFloatFromBigFloat(v *big.Float, t Type) Const {
 	switch t.Kind() {
-	case Float32, Float64:
+	case Float32:
+		var w big.Float
+		if w.Abs(v).Cmp(bigFloatHalfwayPointFloat32) < 0 {
+			f, _ := v.Float64()
+			return newFloatConst(f, nil, t, false)
+		}
+	case Float64:
 		f, _ := v.Float64()
 		return c.representableFloatFromFloat(f, t)
+	default:
+		panic("internal error")
 	}
-	panic("internal error")
+	return nil
 }
 
 func (c *constBase) representableFloatFromBigInt(v *big.Int, t Type) Const {
@@ -1000,7 +1011,7 @@ func (c *constBase) representableFloatFromFloat(v float64, t Type) Const {
 	}
 	switch t.Kind() {
 	case Float32:
-		if math.Abs(v) <= math.MaxFloat32 {
+		if f := float32(v); !math.IsInf(float64(f), 0) {
 			return newFloatConst(v, nil, t, false)
 		}
 	case Float64:
