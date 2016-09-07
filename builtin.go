@@ -275,6 +275,22 @@ func builtinNew(ctx *context, call *Call) Value {
 	return nil
 }
 
+func builtinPanic(ctx *context, call *Call) Value {
+	args, _, ddd := call.args()
+	if ddd {
+		todo(call.ArgumentList, true) // ... invalid
+	}
+	if len(args) < 1 {
+		todo(call.ArgumentList, true) // not enough args
+		return nil
+	}
+
+	if len(args) > 1 {
+		todo(call.ArgumentList.node(3), true) // too many args
+	}
+	return newRuntimeValue(ctx.voidType)
+}
+
 func builtinPrint(ctx *context, call *Call, nl bool) Value {
 	//TODO args, _, ddd := call.args()
 	return newRuntimeValue(ctx.voidType)
