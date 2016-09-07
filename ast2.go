@@ -3272,10 +3272,6 @@ func (n *UnaryExpression) check(ctx *context) (stop bool) {
 // -------------------------------------------------------------------- VarDecl
 
 func (n *VarDecl) check(ctx *context) (stop bool) {
-	if n == nil {
-		return false
-	}
-
-	todo(n)
+	// All is done in decl.go/varDecl()
 	return false
 }
