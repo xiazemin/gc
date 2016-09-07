@@ -274,8 +274,7 @@ func (n *Block) check(ctx *context) (stop bool) {
 		return false
 	}
 
-	todo(n)
-	return false
+	return n.StatementList.check(ctx)
 }
 
 // ----------------------------------------------------------------------- Call
