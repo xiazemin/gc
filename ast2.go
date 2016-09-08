@@ -290,24 +290,45 @@ func (n *Assignment) check(ctx *context) (stop bool) {
 				break
 			}
 
-			v := e.Value
-			if v == nil {
+			rv := e.Value
+			if rv == nil {
 				break
 			}
 
-			t := v.Type()
-			if t == nil {
+			rt := rv.Type()
+			if rt == nil {
 				break
 			}
 
-			switch t.Kind() {
+			switch rt.Kind() {
 			case Tuple:
 				todo(n)
 			default:
 				if len(lhs) != 1 {
 					todo(n, true) // mismatch
 				}
-				todo(n)
+				e := lhs[0]
+				if e == nil {
+					break
+				}
+
+				lv := e.Value
+				if lv == nil {
+					break
+				}
+
+				if !lv.Addressable() {
+					todo(n, true) // invalid dst
+				}
+
+				lt := lv.Type()
+				if lt == nil {
+					break
+				}
+
+				if !rv.AssignableTo(lt) {
+					todo(n, true) // type mismatch
+				}
 			}
 		default:
 			todo(n)
