@@ -1081,7 +1081,14 @@ func (n *IfHeader) check(ctx *context) (stop bool) {
 		return false
 	}
 
-	return n.SimpleStatementOpt.check(ctx) || n.SimpleStatementOpt2.check(ctx)
+	switch n.Case {
+	case 0: // SimpleStatementOpt
+		return n.SimpleStatementOpt.check(ctx, true)
+	case 1: // SimpleStatementOpt ';' SimpleStatementOpt
+		return n.SimpleStatementOpt.check(ctx, false) || n.SimpleStatementOpt2.check(ctx, true)
+	default:
+		panic("internal error")
+	}
 }
 
 // ---------------------------------------------------------------- IfStatement
@@ -2652,7 +2659,7 @@ func (n *Signature) check(ctx *context) (stop bool) {
 
 // ------------------------------------------------------------ SimpleStatement
 
-func (n *SimpleStatement) check(ctx *context) (stop bool) {
+func (n *SimpleStatement) check(ctx *context, used bool) (stop bool) {
 	if n == nil {
 		return false
 	}
@@ -2674,7 +2681,7 @@ func (n *SimpleStatement) check(ctx *context) (stop bool) {
 			break
 		}
 
-		if isVoid(v.Type()) || n.Expression.isCall() {
+		if used || isVoid(v.Type()) || n.Expression.isCall() {
 			break
 		}
 
@@ -2743,12 +2750,12 @@ func (n *SimpleStatement) check(ctx *context) (stop bool) {
 
 // --------------------------------------------------------- SimpleStatementOpt
 
-func (n *SimpleStatementOpt) check(ctx *context) (stop bool) {
+func (n *SimpleStatementOpt) check(ctx *context, used bool) (stop bool) {
 	if n == nil {
 		return false
 	}
 
-	return n.SimpleStatement.check(ctx)
+	return n.SimpleStatement.check(ctx, used)
 }
 
 // ------------------------------------------------------------------ SliceType
@@ -2908,7 +2915,7 @@ func (n *StatementNonDecl) check(ctx *context) (stop bool) {
 	case 10: // SelectStatement
 		todo(n)
 	case 11: // SimpleStatement
-		return n.SimpleStatement.check(ctx)
+		return n.SimpleStatement.check(ctx, false)
 	case 12: // SwitchStatement
 		todo(n)
 	default:
