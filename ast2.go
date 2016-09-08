@@ -957,7 +957,7 @@ func (n *Expression) check(ctx *context) (stop bool) {
 	case 19: // Expression ">>" Expression
 		n.Value = n.Expression.Value.rsh(n.Token, n.Expression2.Value)
 	case 20: // Expression "<-" Expression
-		todo(n)
+		n.Value = newRuntimeValue(ctx.voidType)
 	default:
 		panic("internal error")
 	}
