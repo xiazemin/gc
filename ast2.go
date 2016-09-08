@@ -2901,7 +2901,7 @@ func (n *StatementNonDecl) check(ctx *context) (stop bool) {
 	case 2: // "defer" Expression
 		todo(n)
 	case 3: // "fallthrough"
-		todo(n)
+		//TODO check valid context
 	case 4: // ForStatement
 		return n.ForStatement.check(ctx)
 	case 5: // "go" Expression
