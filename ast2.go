@@ -2847,7 +2847,7 @@ func (n *SimpleStatement) check(ctx *context, used bool) (stop bool) {
 	//dbg("", position(n.Pos()))
 	switch n.Case {
 	case 0: // Assignment
-		todo(n)
+		// nop
 	case 1: // Expression
 		v := n.Expression.Value
 		if v == nil {
