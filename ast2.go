@@ -3138,7 +3138,22 @@ func (n *SwitchCase) check(ctx *context) (stop bool) {
 		return false
 	}
 
-	todo(n)
+	switch n.Case {
+	case 0: // "case" ArgumentList ':'
+		todo(n)
+	case 1: // "case" ArgumentList '=' Expression ':'
+		todo(n)
+	case 2: // "case" ArgumentList ":=" Expression ':'
+		todo(n)
+	case 3: // "default" ':'
+		todo(n)
+	case 4: // "case" error
+		todo(n)
+	case 5: // "default" error
+		todo(n)
+	default:
+		panic("internal error")
+	}
 	return false
 }
 
