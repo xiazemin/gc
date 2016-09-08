@@ -3131,6 +3131,17 @@ func (n *StructType) check(ctx *context) (stop bool) {
 	return stop
 }
 
+// ----------------------------------------------------------------- SwitchCase
+
+func (n *SwitchCase) check(ctx *context) (stop bool) {
+	if n == nil {
+		return false
+	}
+
+	todo(n)
+	return false
+}
+
 // ------------------------------------------------------------ SwitchCaseBlock
 
 func (n *SwitchCaseBlock) check(ctx *context) (stop bool) {
@@ -3138,8 +3149,7 @@ func (n *SwitchCaseBlock) check(ctx *context) (stop bool) {
 		return false
 	}
 
-	todo(n)
-	return false
+	return n.SwitchCase.check(ctx) || n.StatementList.check(ctx)
 }
 
 // ----------------------------------------------------------------- SwitchBody
