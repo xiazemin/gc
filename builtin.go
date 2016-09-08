@@ -97,7 +97,6 @@ func builtinComplex(ctx *context, call *Call) Value {
 	}
 
 	if constRe == nil || constIm == nil {
-		todo(call)
 		return nil
 	}
 
@@ -108,6 +107,33 @@ func builtinComplex(ctx *context, call *Call) Value {
 		constRe.Untyped() && constIm.Untyped(),
 	)
 	return newConstValue(c)
+}
+
+func builtinImag(ctx *context, call *Call) Value {
+	args, _, ddd := call.args()
+	if ddd {
+		todo(call.ArgumentList, true) // ... invalid
+	}
+	if len(args) < 1 {
+		todo(call.ArgumentList, true) // not enough args
+		return nil
+	}
+
+	if len(args) > 1 {
+		todo(call.ArgumentList, true) // too many args
+	}
+
+	v := args[0]
+	if v == nil {
+		return nil
+	}
+
+	switch v.Kind() {
+	default:
+		//dbg("", v.Kind())
+		todo(call)
+	}
+	return nil
 }
 
 func builtinLen(ctx *context, call *Call) Value {

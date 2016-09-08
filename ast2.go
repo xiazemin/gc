@@ -2390,7 +2390,7 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 					case idDelete:
 						todo(n)
 					case idImag:
-						todo(n)
+						n.Value = builtinImag(ctx, n.Call)
 					case idLen:
 						n.Value = builtinLen(ctx, n.Call)
 					case idMake:
