@@ -281,7 +281,12 @@ func (n *Assignment) check(ctx *context) (stop bool) {
 
 	switch n.Case {
 	case 0: // ExpressionList '=' ExpressionList
-		todo(n)
+		switch list := n.ExpressionList2.list; len(list) {
+		case 1:
+			todo(n)
+		default:
+			todo(n)
+		}
 	case 1: // ExpressionList "+=" ExpressionList
 		todo(n)
 	case 2: // ExpressionList "&^=" ExpressionList
@@ -2379,7 +2384,7 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 		l := n.checkSliceIndex(ctx, n.ExpressionOpt)
 		h := n.checkSliceIndex(ctx, n.ExpressionOpt2)
 		if l != nil && h != nil {
-			if l.(*intConst).val >= h.(*intConst).val {
+			if l.(*intConst).val > h.(*intConst).val {
 				todo(n, true) // l >= h
 			}
 		}
