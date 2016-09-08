@@ -2991,7 +2991,7 @@ func (n *StatementNonDecl) check(ctx *context) (stop bool) {
 	case 11: // SimpleStatement
 		return n.SimpleStatement.check(ctx, false)
 	case 12: // SwitchStatement
-		todo(n)
+		return n.SwitchStatement.check(ctx)
 	default:
 		panic("internal error")
 	}
@@ -3198,6 +3198,38 @@ func (n *SwitchBody) check(ctx *context) (stop bool) {
 	}
 
 	return false
+}
+
+// --------------------------------------------------------------- SwitchHeader
+
+func (n *SwitchHeader) check(ctx *context) (stop bool) {
+	if n == nil {
+		return false
+	}
+
+	switch n.Case {
+	case 0: // SimpleStatementOpt
+		todo(n)
+	case 1: // SimpleStatementOpt ';'
+		todo(n)
+	case 2: // SimpleStatementOpt ';' Expression
+		todo(n)
+	case 3: // SimpleStatementOpt ';' IDENTIFIER ":=" PrimaryExpression '.' '(' "type" ')'
+		todo(n)
+	default:
+		panic("internal error")
+	}
+	return false
+}
+
+// ------------------------------------------------------------ SwitchStatement
+
+func (n *SwitchStatement) check(ctx *context) (stop bool) {
+	if n == nil {
+		return false
+	}
+
+	return n.SwitchHeader.check(ctx) || n.SwitchBody.check(ctx)
 }
 
 // ------------------------------------------------------------------------ Typ
