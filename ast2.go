@@ -3080,7 +3080,26 @@ func (n *StatementNonDecl) check(ctx *context) (stop bool) {
 					}
 				}
 			default:
-				todo(n)
+				if len(list) < len(rte) {
+					todo(n, true) // not enough values to return
+				}
+				if len(list) > len(rte) {
+					todo(n, true) // too many values to return
+				}
+				for i, e := range list[:mathutil.Min(len(list), len(rte))] {
+					if e == nil {
+						continue
+					}
+
+					v := e.Value
+					if v == nil {
+						continue
+					}
+
+					if !v.AssignableTo(rte[i]) {
+						todo(n, true) // type mismatch
+					}
+				}
 			}
 		default: // Single valued function
 			if len(list) > 1 {
