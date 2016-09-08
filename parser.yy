@@ -230,6 +230,7 @@ Argument:
 	Expression
 |       TypeLiteral
 
+/*yy:field	flags	flags */
 ArgumentList:
 	Argument
 |       ArgumentList ',' Argument
@@ -865,6 +866,7 @@ SimpleStatementOpt:
 SliceType:
 	'[' ']' Typ
 
+/*yy:field	flags	flags */
 Statement:
 	/* empty */
 |       Block
@@ -875,6 +877,7 @@ Statement:
 |	error
 
 /*yy:example "package a ; if { b ;" */
+/*yy:field	flags	flags */
 StatementList:
 	Statement
 |       StatementList ';' Statement

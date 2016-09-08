@@ -163,6 +163,17 @@ func (n *ArgumentList) node(i int) Node {
 	return n
 }
 
+func (n *ArgumentList) check(ctx *context) (stop bool) {
+	for ; n != nil; n = n.ArgumentList {
+		if n.Argument.check(ctx) {
+			return true
+		}
+
+		n.flags = n.flags | n.Argument.flags
+	}
+	return false
+}
+
 // ------------------------------------------------------------------ ArrayType
 
 func (n *ArrayType) check(ctx *context) (stop bool) {
@@ -298,6 +309,7 @@ func (n *Call) check(ctx *context) (stop bool) {
 		if l.Argument.check(ctx) {
 			return true
 		}
+
 		n.flags = n.flags | l.Argument.flags
 	}
 	return false
@@ -1468,6 +1480,9 @@ func (n *Operand) check(ctx *context) (stop bool) {
 		n.Value = newRuntimeValue(t)
 		if t != nil {
 			n.flags = t.flags()
+		}
+		if n.StatementList != nil {
+			n.flags = n.flags | n.StatementList.flags
 		}
 	case 4: // IDENTIFIER GenericArgumentsOpt
 		if n.GenericArgumentsOpt != nil {
@@ -2847,6 +2862,8 @@ func (n *Statement) check(ctx *context) (stop bool) {
 		n.StatementNonDecl.check(ctx) ||
 		n.TypeDecl.check(ctx) ||
 		n.VarDecl.check(ctx)
+
+	//TODO set n.flags
 }
 
 // -------------------------------------------------------------- StatementList
@@ -2856,6 +2873,10 @@ func (n *StatementList) check(ctx *context) (stop bool) {
 		i := n.Statement
 		if i.check(ctx) {
 			return true
+		}
+
+		if n.Statement != nil {
+			n.flags = n.flags | n.Statement.flags
 		}
 	}
 	return false
@@ -3140,7 +3161,7 @@ func (n *SwitchCase) check(ctx *context) (stop bool) {
 
 	switch n.Case {
 	case 0: // "case" ArgumentList ':'
-		todo(n)
+		return n.ArgumentList.check(ctx)
 	case 1: // "case" ArgumentList '=' Expression ':'
 		todo(n)
 	case 2: // "case" ArgumentList ":=" Expression ':'
