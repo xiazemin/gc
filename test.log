@@ -1277,7 +1277,7 @@
 [PASS errorcheck] "receiver.* pointer|invalid pointer or interface receiver": invalid receiver type main.P1 (main.P1 is a pointer type) testdata/gc/method2.go:19:14
 [FAIL errorcheck: missing error] "receiver.*interface|invalid pointer or interface receiver" testdata/gc/method2.go:24:37
 [FAIL errorcheck: missing error] "receiver.*interface|invalid pointer or interface receiver" testdata/gc/method2.go:25:37
-[FAIL errorcheck: missing error] "method" testdata/gc/method2.go:31:20
+[PASS errorcheck] "method": (*main.Val).val undefined (type *main.Val has no method val) testdata/gc/method2.go:31:16
 [PASS errorcheck] "method": val undefined (type *main.Val is pointer to interface, not interface) testdata/gc/method2.go:36:12
 [PASS errorcheck] "method": val undefined (type *main.Val is pointer to interface, not interface) testdata/gc/method2.go:37:12
 [FAIL errorcheck: missing error] "cannot use.*type bool.*as type Bool" testdata/gc/named1.go:57:13

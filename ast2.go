@@ -2228,7 +2228,20 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 				}
 			}
 			if m == nil {
-				todo(n, true)
+				if synth {
+					t = newPtrType(ctx, t)
+				}
+				switch {
+				case t.Kind() == Ptr:
+					if ctx.err(nm, "(%s).%s undefined (type %s has no method %s)", t, nm.S(), t, nm.S()) {
+						return true
+					}
+				default:
+					if ctx.err(nm, "%s.%s undefined (type %s has no method %s)", t, nm.S(), t, nm.S()) {
+						return true
+					}
+				}
+
 				break
 			}
 
