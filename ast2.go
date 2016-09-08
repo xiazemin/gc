@@ -279,11 +279,13 @@ func (n *Assignment) check(ctx *context) (stop bool) {
 		return true
 	}
 
+	lhs := n.ExpressionList.list
+	rhs := n.ExpressionList2.list
 	switch n.Case {
 	case 0: // ExpressionList '=' ExpressionList
-		switch list := n.ExpressionList2.list; len(list) {
+		switch len(rhs) {
 		case 1:
-			e := list[0]
+			e := rhs[0]
 			if e == nil {
 				break
 			}
@@ -302,6 +304,9 @@ func (n *Assignment) check(ctx *context) (stop bool) {
 			case Tuple:
 				todo(n)
 			default:
+				if len(lhs) != 1 {
+					todo(n, true) // mismatch
+				}
 				todo(n)
 			}
 		default:
