@@ -839,6 +839,7 @@ func (*CompLitValue) check(ctx *context, n CompositeLiteralValue, t Type) (stop 
 				case hasKey:
 					keyed = true
 					if v != nil && field.Type != nil && !v.AssignableTo(field.Type) {
+						//dbg("%s\nval: %s\nfld: %s", position(val.Pos()), v.Type(), field.Type)
 						todo(val, true)
 					}
 				default:
