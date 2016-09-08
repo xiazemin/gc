@@ -3464,17 +3464,27 @@ func (n *TypeLiteral) check(ctx *context) (stop bool) {
 
 		n.Type = n.InterfaceType.Type
 	case 5: // MapType
-		stop = n.MapType.check(ctx)
+		if n.MapType.check(ctx) {
+			return true
+		}
+
 		n.Type = n.MapType.Type
 	case 6: // SliceType
-		stop = n.SliceType.check(ctx)
+		if n.SliceType.check(ctx) {
+			return true
+		}
+
 		n.Type = n.SliceType.Type
 	case 7: // StructType
-		todo(n)
+		if n.StructType.check(ctx) {
+			return true
+		}
+
+		n.Type = n.StructType.Type
 	default:
 		panic("internal error")
 	}
-	return stop
+	return false
 }
 
 // ------------------------------------------------------------ UnaryExpression
