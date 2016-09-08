@@ -36,7 +36,7 @@ func builtinAppend(ctx *context, call *Call) Value {
 				continue
 			}
 
-			if !v.AssignableTo(st) {
+			if !v.AssignableTo(et) {
 				todo(call, true) // type mismatch
 			}
 		}
