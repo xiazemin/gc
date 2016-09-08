@@ -379,11 +379,10 @@ type runtimeValue struct {
 	//TODO shrink runtimeValue size by introducing a payload field.
 }
 
-// typ can be nil as a result of `expr.(type)`.
 func newRuntimeValue(typ Type) Value {
-	//TODO- if typ == nil {
-	//TODO- 	return nil
-	//TODO- }
+	if typ == nil {
+		return nil
+	}
 
 	return &runtimeValue{
 		typ:       typ,
