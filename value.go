@@ -551,6 +551,13 @@ func (v *runtimeValue) eq(n Node, op Value) Value {
 		}
 
 		return newRuntimeValue(v.Type().context().untypedBoolType)
+	case NilValue:
+		if !op.AssignableTo(v.Type()) {
+			todo(n, true) // invalid operand
+			break
+		}
+
+		return newRuntimeValue(v.Type().context().untypedBoolType)
 	default:
 		//dbg("", op.Kind())
 		todo(n)
