@@ -973,6 +973,14 @@ func (t *funcType) NumIn() int       { return len(t.in) }
 func (t *funcType) Result() Type     { return t.result }
 func (t *funcType) flags() flags     { return t.flgs }
 
+func (t *funcType) ptrMethod(ctx *context) *funcType {
+	u := *t
+	u.in = append([]Type(nil), t.in...)
+	u.in[0] = newPtrType(ctx, t.in[0])
+	u.typ = &u
+	return &u
+}
+
 func (t *funcType) Identical(u Type) bool {
 	if u.Kind() != Func {
 		return false
