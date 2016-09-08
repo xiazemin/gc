@@ -1517,7 +1517,7 @@
 [FAIL errorcheck: missing error] "invalid" "as type float32" testdata/gc/shift1.go:21:23
 [FAIL errorcheck: missing error] "invalid|shift of non-integer operand" "as type interface" testdata/gc/shift1.go:26:25
 [FAIL errorcheck: missing error] "invalid" "as type float64" testdata/gc/shift1.go:27:25
-[FAIL errorcheck: error does not match] "truncated": invalid operand for binary << testdata/gc/shift1.go:28:17
+[FAIL errorcheck: missing error] "truncated" testdata/gc/shift1.go:28:25
 [FAIL errorcheck: missing error] "overflow" testdata/gc/shift1.go:35:23
 [PASS errorcheck] "overflow": constant 36893488147419103232 overflows int testdata/gc/shift1.go:36:2
 [FAIL errorcheck: missing error] "overflow" testdata/gc/shift1.go:37:23
@@ -1566,13 +1566,13 @@
 [FAIL errorcheck: missing error] "invalid|non-integer|shift of type float64" testdata/gc/shift1.go:116:33
 [FAIL errorcheck: missing error] "invalid|non-integer|shift of type float64" testdata/gc/shift1.go:117:33
 [FAIL errorcheck: missing error] "invalid|non-integer|shift of type float64" testdata/gc/shift1.go:118:33
-[FAIL errorcheck: error does not match] "truncated": invalid operand for binary << testdata/gc/shift1.go:126:9
+[FAIL errorcheck: missing error] "truncated" testdata/gc/shift1.go:126:18
 [FAIL errorcheck: missing error] "truncated" testdata/gc/shift1.go:130:20
 [FAIL errorcheck: missing error] "truncated" testdata/gc/shift1.go:133:22
-[FAIL errorcheck: error does not match] "truncated": invalid operand for binary << testdata/gc/shift1.go:134:9
-[FAIL errorcheck: error does not match] "truncated": invalid operand for binary << testdata/gc/shift1.go:135:9
-[FAIL errorcheck: error does not match] "truncated": invalid operand for binary << testdata/gc/shift1.go:136:9
-[FAIL errorcheck: error does not match] "truncated": invalid operand for binary << testdata/gc/shift1.go:140:9
+[FAIL errorcheck: missing error] "truncated" testdata/gc/shift1.go:134:22
+[FAIL errorcheck: missing error] "truncated" testdata/gc/shift1.go:135:22
+[FAIL errorcheck: missing error] "truncated" testdata/gc/shift1.go:136:22
+[FAIL errorcheck: missing error] "truncated" testdata/gc/shift1.go:140:21
 [FAIL errorcheck: missing error] "integer|shift of type float64" testdata/gc/shift1.go:150:16
 [FAIL errorcheck: missing error] "integer|shift of type float64" testdata/gc/shift1.go:151:16
 [FAIL errorcheck: missing error] "non-integer|truncated" testdata/gc/shift1.go:156:26

@@ -1866,11 +1866,19 @@ func (c *floatConst) lt(n Node, op Value) Value {
 
 func (c *floatConst) lsh(n Node, op Value) Value {
 	ctx := c.Type().context()
-	if i := c.convert(ctx.intType); i != nil {
-		return i.lsh(n, op)
-	}
+	switch op.Kind() {
+	case ConstValue:
+		if i := c.convert(ctx.intType); i != nil {
+			return i.lsh(n, op)
+		}
 
-	ctx.err(n, "invalid operand for binary <<")
+		ctx.err(n, "invalid operand for binary <<")
+	case RuntimeValue:
+		//TODO non const shift rules
+	default:
+		//dbg("", op.Kind())
+		todo(n)
+	}
 	return nil
 }
 
@@ -2425,7 +2433,7 @@ func (c *intConst) lsh(n Node, op Value) Value {
 	case ConstValue:
 		d := op.Const()
 		if !d.Integral() {
-			todo(n)
+			todo(n, true) // invalid shift count
 			return nil
 		}
 
@@ -2473,6 +2481,8 @@ func (c *intConst) lsh(n Node, op Value) Value {
 				return newConstValue(i)
 			}
 		}
+	case RuntimeValue:
+		//TODO non const shift rules
 	default:
 		//dbg("", op.Kind())
 		todo(n)
