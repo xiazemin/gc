@@ -1982,7 +1982,12 @@ func (n *PrimaryExpression) checkSliceIndex(ctx *context, o *ExpressionOpt) Valu
 		return nil
 	}
 
-	return v
+	if c := v.Const().Convert(ctx.intType); c != nil {
+		return c
+	}
+
+	todo(n, true) // const index overflow
+	return nil
 }
 
 func (n *PrimaryExpression) check(ctx *context) (stop bool) {
