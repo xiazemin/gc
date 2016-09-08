@@ -3458,7 +3458,11 @@ func (n *TypeLiteral) check(ctx *context) (stop bool) {
 	case 3: // FuncType
 		todo(n)
 	case 4: // InterfaceType
-		todo(n)
+		if n.InterfaceType.check(ctx) {
+			return true
+		}
+
+		n.Type = n.InterfaceType.Type
 	case 5: // MapType
 		stop = n.MapType.check(ctx)
 		n.Type = n.MapType.Type
