@@ -3167,7 +3167,7 @@ func (n *SwitchCase) check(ctx *context) (stop bool) {
 	case 2: // "case" ArgumentList ":=" Expression ':'
 		todo(n)
 	case 3: // "default" ':'
-		todo(n)
+		//TODO check unique
 	case 4: // "case" error
 		todo(n)
 	case 5: // "default" error
