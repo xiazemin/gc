@@ -1026,6 +1026,27 @@ func (n *ExpressionOpt) check(ctx *context) (stop bool) {
 	return false
 }
 
+// ------------------------------------------------------------------ ForHeader
+
+func (n *ForHeader) check(ctx *context) (stop bool) {
+	if n == nil {
+		return false
+	}
+
+	todo(n)
+	return false
+}
+
+// --------------------------------------------------------------- ForStatement
+
+func (n *ForStatement) check(ctx *context) (stop bool) {
+	if n == nil {
+		return false
+	}
+
+	return n.ForHeader.check(ctx) || n.Body.check(ctx)
+}
+
 // ------------------------------------------------------------------- FuncType
 
 func (n *FuncType) check(ctx *context) (stop bool) {
@@ -2838,7 +2859,7 @@ func (n *StatementNonDecl) check(ctx *context) (stop bool) {
 	case 3: // "fallthrough"
 		todo(n)
 	case 4: // ForStatement
-		todo(n)
+		return n.ForStatement.check(ctx)
 	case 5: // "go" Expression
 		todo(n)
 	case 6: // "goto" IDENTIFIER
