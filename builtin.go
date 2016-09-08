@@ -26,7 +26,16 @@ func builtinAppend(ctx *context, call *Call) Value {
 	case ddd:
 		todo(call)
 	default:
-		todo(call)
+		for _, v := range args[1:] {
+			if v == nil {
+				continue
+			}
+
+			if !v.AssignableTo(st) {
+				todo(call, true) // type mismatch
+			}
+		}
+		return newRuntimeValue(st)
 	}
 	return nil
 }
