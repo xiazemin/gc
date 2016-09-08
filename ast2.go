@@ -1955,7 +1955,7 @@ func (n *PrimaryExpression) checkSelector(ctx *context, t Type, nm xc.Token) []S
 	panic("internal error")
 }
 
-func (n *PrimaryExpression) checkSliceIndex(ctx *context, o *ExpressionOpt) Value {
+func (n *PrimaryExpression) checkSliceIndex(ctx *context, o *ExpressionOpt) Const {
 	if o == nil {
 		return nil
 	}
@@ -1969,6 +1969,11 @@ func (n *PrimaryExpression) checkSliceIndex(ctx *context, o *ExpressionOpt) Valu
 		return nil
 	}
 
+	if !v.Type().Numeric() || !v.nonNegativeInteger() {
+		todo(n, true) // non-integer index
+		return nil
+	}
+
 	switch v.Kind() {
 	case ConstValue:
 	default:
@@ -1977,13 +1982,8 @@ func (n *PrimaryExpression) checkSliceIndex(ctx *context, o *ExpressionOpt) Valu
 		return nil
 	}
 
-	if !v.Type().Numeric() || !v.nonNegativeInteger() {
-		todo(n, true) // non-integer index
-		return nil
-	}
-
 	if c := v.Const().Convert(ctx.intType); c != nil {
-		return c
+		return c.Const()
 	}
 
 	todo(n, true) // const index overflow
@@ -2378,8 +2378,10 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 		}
 		l := n.checkSliceIndex(ctx, n.ExpressionOpt)
 		h := n.checkSliceIndex(ctx, n.ExpressionOpt2)
-		if l != nil && h != nil && l.Kind() == ConstValue && h.Kind() == ConstValue {
-			todo(n) // check l <= H
+		if l != nil && h != nil {
+			if l.(*intConst).val >= h.(*intConst).val {
+				todo(n, true) // l >= h
+			}
 		}
 	case 8: // PrimaryExpression Call
 		defer func() {
