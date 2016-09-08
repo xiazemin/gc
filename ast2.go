@@ -829,14 +829,25 @@ loop:
 	}
 }
 
-// ------------------------------------------------------------------- ElifList
+// ----------------------------------------------------------------------- Elif
 
-func (n *ElifList) check(ctx *context) (stop bool) {
+func (n *Elif) check(ctx *context) (stop bool) {
 	if n == nil {
 		return false
 	}
 
-	todo(n)
+	return n.IfHeader.check(ctx) || n.Body.check(ctx)
+}
+
+// ------------------------------------------------------------------- ElifList
+
+func (n *ElifList) check(ctx *context) (stop bool) {
+	for ; n != nil; n = n.ElifList {
+		if n.Elif.check(ctx) {
+			return true
+		}
+	}
+
 	return false
 }
 
