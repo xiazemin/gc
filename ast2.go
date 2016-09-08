@@ -3209,7 +3209,7 @@ func (n *SwitchHeader) check(ctx *context) (stop bool) {
 
 	switch n.Case {
 	case 0: // SimpleStatementOpt
-		todo(n)
+		return n.SimpleStatementOpt.check(ctx, true)
 	case 1: // SimpleStatementOpt ';'
 		todo(n)
 	case 2: // SimpleStatementOpt ';' Expression
