@@ -724,7 +724,7 @@ func (*CompLitValue) check(ctx *context, n CompositeLiteralValue, t Type) (stop 
 					default:
 						var k mapKey
 						switch ck.Kind() {
-						case IntConst:
+						case IntConst, RuneConst:
 							if d := ck.Convert(ctx.intType); d != nil {
 								k.i = d.Const().(*intConst).val
 								break
@@ -738,7 +738,7 @@ func (*CompLitValue) check(ctx *context, n CompositeLiteralValue, t Type) (stop 
 							todo(e)
 						}
 						switch ck.Kind() {
-						case IntConst, StringConst: //TODO more types
+						case IntConst, RuneConst, StringConst: //TODO more types
 							if _, ok := m[k]; ok {
 								if ctx.err(e, "duplicate key %s in map literal", ck) {
 									return true
