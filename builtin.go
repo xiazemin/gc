@@ -11,6 +11,17 @@ func builtinAppend(ctx *context, call *Call) Value {
 		return nil
 	}
 
+	sv := args[0]
+	if sv == nil {
+		return nil
+	}
+
+	st := sv.Type()
+	if st.Kind() != Slice {
+		todo(call, true) // expected slice
+		return nil
+	}
+
 	switch {
 	case ddd:
 		todo(call)
