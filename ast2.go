@@ -1039,7 +1039,7 @@ func (n *ForHeader) check(ctx *context) (stop bool) {
 	case 1: // SimpleStatementOpt ';' SimpleStatementOpt ';' SimpleStatementOpt
 		todo(n)
 	case 2: // SimpleStatementOpt
-		todo(n)
+		return n.SimpleStatementOpt.check(ctx, true)
 	default:
 		panic("internal error")
 	}
