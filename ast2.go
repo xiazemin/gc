@@ -2672,6 +2672,16 @@ func (n *ResultOpt) check(ctx *context) (stop bool) {
 	return false
 }
 
+// ------------------------------------------------------------ SelectStatement
+
+func (n *SelectStatement) check(ctx *context) (stop bool) {
+	if n == nil {
+		return false
+	}
+
+	return n.SwitchBody.check(ctx)
+}
+
 // ------------------------------------------------------------------ Signature
 
 func (n *Signature) post(lx *lexer) {
@@ -2956,7 +2966,7 @@ func (n *StatementNonDecl) check(ctx *context) (stop bool) {
 			}
 		}
 	case 10: // SelectStatement
-		todo(n)
+		return n.SelectStatement.check(ctx)
 	case 11: // SimpleStatement
 		return n.SimpleStatement.check(ctx, false)
 	case 12: // SwitchStatement
@@ -3119,6 +3129,29 @@ func (n *StructType) check(ctx *context) (stop bool) {
 	}
 
 	return stop
+}
+
+// ------------------------------------------------------------ SwitchCaseBlock
+
+func (n *SwitchCaseBlock) check(ctx *context) (stop bool) {
+	if n == nil {
+		return false
+	}
+
+	todo(n)
+	return false
+}
+
+// ----------------------------------------------------------------- SwitchBody
+
+func (n *SwitchBody) check(ctx *context) (stop bool) {
+	for l := n.SwitchCaseList; l != nil; l = l.SwitchCaseList {
+		if l.SwitchCaseBlock.check(ctx) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // ------------------------------------------------------------------------ Typ
