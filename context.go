@@ -797,7 +797,12 @@ func (c *Context) constStringBinOpShape(a, b Const, n Node) (Type, bool /* untyp
 	case b.Untyped(): // !a.Untyped() && b.Untyped()
 		return a.Type(), false, a, b.mustConvert(n, a.Type()) // Cannot fail.
 	default: // !a.Untyped() && !b.Untyped()
-		todo(n)
+		if !a.Type().Identical(b.Type()) {
+			todo(n, true) // type mismatch
+			break
+		}
+
+		return a.Type(), false, a, b
 	}
 	return nil, false, nil, nil
 }
