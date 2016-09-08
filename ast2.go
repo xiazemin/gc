@@ -3349,7 +3349,13 @@ func (n *TypeLiteral) check(ctx *context) (stop bool) {
 
 	switch n.Case {
 	case 0: // '*' TypeLiteral
-		todo(n)
+		if n.TypeLiteral.check(ctx) {
+			return true
+		}
+
+		if t := n.TypeLiteral.Type; t != nil {
+			n.Type = newPtrType(ctx, t)
+		}
 	case 1: // ArrayType
 		if n.ArrayType.check(ctx) {
 			return true
