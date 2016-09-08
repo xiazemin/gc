@@ -2002,7 +2002,29 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 			n.flags = t.flags()
 		}
 	case 2: // PrimaryExpression '.' '(' "type" ')'
-		todo(n)
+		v := n.PrimaryExpression.Value
+		if v == nil {
+			break
+		}
+
+		switch v.Kind() {
+		case RuntimeValue:
+			t := v.Type()
+			if t == nil {
+				break
+			}
+
+			n.flags = t.flags()
+			if t.Kind() != Interface {
+				todo(n, true) // not an interface
+				break
+			}
+
+			n.Value = newRuntimeValue(nil) // Type determined at run time.
+		default:
+			//dbg("", v.Kind())
+			todo(n)
+		}
 		//TODO n.flags =
 	case 3: // PrimaryExpression '.' '(' Typ ')'
 		v := n.PrimaryExpression.Value

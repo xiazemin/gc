@@ -283,4 +283,4 @@ func uintptrConstValueFromUint64(ctx *context, n uint64) Value {
 	}
 }
 
-func isVoid(t Type) bool { return t.Kind() == Tuple && len(t.Elements()) == 0 }
+func isVoid(t Type) bool { return t != nil && t.Kind() == Tuple && len(t.Elements()) == 0 }
