@@ -277,6 +277,17 @@ func (n *Block) check(ctx *context) (stop bool) {
 	return n.StatementList.check(ctx)
 }
 
+// ----------------------------------------------------------------------- Body
+
+func (n *Body) check(ctx *context) (stop bool) {
+	if n == nil {
+		return false
+	}
+
+	todo(n)
+	return false
+}
+
 // ----------------------------------------------------------------------- Call
 
 func (n *Call) check(ctx *context) (stop bool) {
@@ -819,6 +830,28 @@ loop:
 	}
 }
 
+// ------------------------------------------------------------------- ElifList
+
+func (n *ElifList) check(ctx *context) (stop bool) {
+	if n == nil {
+		return false
+	}
+
+	todo(n)
+	return false
+}
+
+// -------------------------------------------------------------------- ElseOpt
+
+func (n *ElseOpt) check(ctx *context) (stop bool) {
+	if n == nil {
+		return false
+	}
+
+	todo(n)
+	return false
+}
+
 // ----------------------------------------------------------------- Expression
 
 func (n *Expression) isCall() bool {
@@ -1039,6 +1072,33 @@ func (n *IdentifierList) ident() xc.Token {
 	// case 1: // IdentifierList ',' IDENTIFIER
 	return n.Token2
 
+}
+
+// ------------------------------------------------------------------- IfHeader
+
+func (n *IfHeader) check(ctx *context) (stop bool) {
+	if n == nil {
+		return false
+	}
+
+	todo(n)
+	return false
+}
+
+// ---------------------------------------------------------------- IfStatement
+
+func (n *IfStatement) check(ctx *context) (stop bool) {
+	if n == nil {
+		return false
+	}
+
+	if n.IfHeader.check(ctx) ||
+		n.Body.check(ctx) ||
+		n.ElifList.check(ctx) ||
+		n.ElseOpt.check(ctx) {
+		return true
+	}
+	return false
 }
 
 // ----------------------------------------------------------------- ImportSpec
@@ -2762,7 +2822,7 @@ func (n *StatementNonDecl) check(ctx *context) (stop bool) {
 	case 7: // IDENTIFIER ':' Statement
 		return n.Statement.check(ctx)
 	case 8: // IfStatement
-		todo(n)
+		return n.IfStatement.check(ctx)
 	case 9: // "return" ExpressionListOpt
 		o := n.ExpressionListOpt
 		if o == nil {
