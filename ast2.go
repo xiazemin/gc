@@ -2465,7 +2465,7 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 				case ctx.isPredeclared(d):
 					switch d.Name() {
 					case idAppend:
-						todo(n)
+						n.Value = builtinAppend(ctx, n.Call)
 					case idCap:
 						n.Value = builtinCap(ctx, n.Call)
 					case idClose:

@@ -4,6 +4,22 @@
 
 package gc
 
+func builtinAppend(ctx *context, call *Call) Value {
+	args, _, ddd := call.args()
+	if len(args) < 2 {
+		todo(call.ArgumentList, true) // not enough args
+		return nil
+	}
+
+	switch {
+	case ddd:
+		todo(call)
+	default:
+		todo(call)
+	}
+	return nil
+}
+
 func builtinCap(ctx *context, call *Call) Value {
 	args, flags, ddd := call.args()
 	if ddd {
