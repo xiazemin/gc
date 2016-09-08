@@ -22,6 +22,11 @@ func builtinAppend(ctx *context, call *Call) Value {
 		return nil
 	}
 
+	et := st.Elem()
+	if et == nil {
+		return newRuntimeValue(st)
+	}
+
 	switch {
 	case ddd:
 		todo(call)
