@@ -283,7 +283,27 @@ func (n *Assignment) check(ctx *context) (stop bool) {
 	case 0: // ExpressionList '=' ExpressionList
 		switch list := n.ExpressionList2.list; len(list) {
 		case 1:
-			todo(n)
+			e := list[0]
+			if e == nil {
+				break
+			}
+
+			v := e.Value
+			if v == nil {
+				break
+			}
+
+			t := v.Type()
+			if t == nil {
+				break
+			}
+
+			switch t.Kind() {
+			case Tuple:
+				todo(n)
+			default:
+				todo(n)
+			}
 		default:
 			todo(n)
 		}
