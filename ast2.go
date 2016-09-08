@@ -1486,7 +1486,7 @@ func (n *Operand) check(ctx *context) (stop bool) {
 		}
 	case 4: // IDENTIFIER GenericArgumentsOpt
 		if n.GenericArgumentsOpt != nil {
-			todo(n)
+			//TODO generics todo(n)
 		}
 		if n.Token.Val == idUnderscore {
 			if ctx.err(n, "cannot use _ as value") {
@@ -1643,7 +1643,7 @@ func (n *Parameters) post(lx *lexer) {
 			switch t := pd.Typ; t.Case {
 			case 7: // QualifiedIdent GenericArgumentsOpt
 				if t.GenericArgumentsOpt != nil {
-					todo(n)
+					//TODO generics todo(n)
 				}
 				switch qi := t.QualifiedIdent; qi.Case {
 				case 0: // IDENTIFIER
@@ -2627,7 +2627,7 @@ func (n *ReceiverOpt) post(lx *lexer) {
 			}
 		case 7: // QualifiedIdent GenericArgumentsOpt
 			if t.GenericArgumentsOpt != nil {
-				todo(n)
+				//TODO generics todo(n)
 			}
 			switch qi := t.QualifiedIdent; qi.Case {
 			case 0: // IDENTIFIER
@@ -3307,7 +3307,7 @@ func (n *Typ) check(ctx *context) (stop bool) {
 		n.Type = t.MapType.Type
 	case 7: // QualifiedIdent GenericArgumentsOpt
 		if t.GenericArgumentsOpt != nil {
-			todo(n)
+			//TODO generics todo(n)
 		}
 		n.Type, stop = n.QualifiedIdent.checkTypeName(ctx)
 	case 8: // SliceType
