@@ -847,8 +847,7 @@ func (n *ElseOpt) check(ctx *context) (stop bool) {
 		return false
 	}
 
-	todo(n)
-	return false
+	return n.Block.check(ctx)
 }
 
 // ----------------------------------------------------------------- Expression
