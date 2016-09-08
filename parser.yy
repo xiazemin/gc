@@ -882,7 +882,13 @@ StatementList:
 /*yy:field	resolutionScope	*Scope */
 StatementNonDecl:
 	"break" IdentifierOpt
+	{
+		lhs.resolutionScope = lx.resolutionScope
+	}
 |       "continue" IdentifierOpt
+	{
+		lhs.resolutionScope = lx.resolutionScope
+	}
 |       "defer" Expression
 |       "fallthrough"
 |       ForStatement
