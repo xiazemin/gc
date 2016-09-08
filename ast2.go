@@ -274,7 +274,39 @@ func (n *Assignment) check(ctx *context) (stop bool) {
 		return false
 	}
 
-	todo(n)
+	if n.ExpressionList.check(ctx) ||
+		n.ExpressionList2.check(ctx) {
+		return true
+	}
+
+	switch n.Case {
+	case 0: // ExpressionList '=' ExpressionList
+		todo(n)
+	case 1: // ExpressionList "+=" ExpressionList
+		todo(n)
+	case 2: // ExpressionList "&^=" ExpressionList
+		todo(n)
+	case 3: // ExpressionList "&=" ExpressionList
+		todo(n)
+	case 4: // ExpressionList "/=" ExpressionList
+		todo(n)
+	case 5: // ExpressionList "<<=" ExpressionList
+		todo(n)
+	case 6: // ExpressionList "%=" ExpressionList
+		todo(n)
+	case 7: // ExpressionList "*=" ExpressionList
+		todo(n)
+	case 8: // ExpressionList "|=" ExpressionList
+		todo(n)
+	case 9: // ExpressionList ">>=" ExpressionList
+		todo(n)
+	case 10: // ExpressionList "-=" ExpressionList
+		todo(n)
+	case 11: // ExpressionList "^=" ExpressionList
+		todo(n)
+	default:
+		panic("internal error")
+	}
 	return false
 }
 
