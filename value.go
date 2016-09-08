@@ -635,7 +635,7 @@ func (v *runtimeValue) gt(n Node, op Value) Value {
 }
 
 func (v *runtimeValue) lsh(n Node, op Value) Value {
-	todo(n)
+	//TODO non const shift rules
 	return nil
 }
 
