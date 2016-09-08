@@ -1033,7 +1033,16 @@ func (n *ForHeader) check(ctx *context) (stop bool) {
 		return false
 	}
 
-	todo(n)
+	switch n.Case {
+	case 0: // Range
+		todo(n)
+	case 1: // SimpleStatementOpt ';' SimpleStatementOpt ';' SimpleStatementOpt
+		todo(n)
+	case 2: // SimpleStatementOpt
+		todo(n)
+	default:
+		panic("internal error")
+	}
 	return false
 }
 
