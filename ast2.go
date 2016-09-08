@@ -1081,8 +1081,7 @@ func (n *IfHeader) check(ctx *context) (stop bool) {
 		return false
 	}
 
-	todo(n)
-	return false
+	return n.SimpleStatementOpt.check(ctx) || n.SimpleStatementOpt2.check(ctx)
 }
 
 // ---------------------------------------------------------------- IfStatement
@@ -2740,6 +2739,16 @@ func (n *SimpleStatement) check(ctx *context) (stop bool) {
 		panic("internal error")
 	}
 	return false
+}
+
+// --------------------------------------------------------- SimpleStatementOpt
+
+func (n *SimpleStatementOpt) check(ctx *context) (stop bool) {
+	if n == nil {
+		return false
+	}
+
+	return n.SimpleStatement.check(ctx)
 }
 
 // ------------------------------------------------------------------ SliceType
