@@ -2862,7 +2862,7 @@ func (n *StatementNonDecl) check(ctx *context) (stop bool) {
 	case 0: // "break" IdentifierOpt
 		//TODO verify valid context
 		if o := n.IdentifierOpt; o != nil {
-			n.resolutionScope.mustLookupLabel(ctx, n.Token2)
+			n.resolutionScope.mustLookupLabel(ctx, o.Token)
 			//TODO verify valid target
 		}
 	case 1: // "continue" IdentifierOpt
