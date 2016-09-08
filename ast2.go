@@ -2860,7 +2860,10 @@ func (n *StatementNonDecl) check(ctx *context) (stop bool) {
 
 	switch n.Case {
 	case 0: // "break" IdentifierOpt
-		todo(n)
+		//TODO verify valid context
+		if o := n.IdentifierOpt; o != nil {
+			todo(n)
+		}
 	case 1: // "continue" IdentifierOpt
 		todo(n)
 	case 2: // "defer" Expression
