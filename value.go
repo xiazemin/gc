@@ -2419,6 +2419,18 @@ func (c *intConst) div(n Node, op Value) Value {
 				return newConstValue(d)
 			}
 		}
+	case RuntimeValue:
+		if !op.Type().Numeric() {
+			todo(n, true) // invalid operand
+			break
+		}
+
+		if !c.ConvertibleTo(op.Type()) {
+			todo(n, true) // type mismatch
+			break
+		}
+
+		return newRuntimeValue(op.Type())
 	default:
 		//dbg("", op.Kind())
 		todo(n)
