@@ -525,19 +525,14 @@ func TestTmp(t *testing.T) {
 	if err := p.loadString("", `
 package foo
 
-type common struct {
-	sub      []*T 
+type floatEncoder int // number of bits
+
+func (bits floatEncoder) encode() {
 }
 
-type T struct {
-	common
-}
-
-func (c *common) private() {}
-
-type B struct {
-	common
-}
+var (
+	float32Encoder = (floatEncoder(32)).encode
+)
 `,
 	); err != nil {
 		t.Fatal(errStr(err))

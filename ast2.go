@@ -2153,8 +2153,6 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 		}
 
 		switch v.Kind() {
-		case ConstValue:
-			ctx.err(nm, "%s undefined (type %s has no field or method %s)", nm.S(), v.Type(), nm.S())
 		case PackageValue:
 			if !isExported(nm.Val) { //TODO use d.IsExported()
 				todo(n, true)
@@ -2190,6 +2188,9 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 			}
 
 			ctx.err(nm, "undefined: %s.%s", p.Name, nm.S())
+		case ConstValue:
+			v = newRuntimeValue(v.Type())
+			fallthrough
 		case RuntimeValue:
 			t := v.Type()
 			if t == nil {

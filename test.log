@@ -922,8 +922,8 @@
 [FAIL errorcheck: missing error] "initialization loop|depends upon itself" testdata/gc/fixedbugs/issue6703b.go:16:14
 [FAIL errorcheck: missing error] "initialization loop|depends upon itself" testdata/gc/fixedbugs/issue6703c.go:18:13
 [FAIL errorcheck: missing error] "initialization loop|depends upon itself" testdata/gc/fixedbugs/issue6703d.go:18:16
-[FAIL errorcheck: error does not match] "initialization loop|depends upon itself": m undefined (type litmethvalue.T has no field or method m) testdata/gc/fixedbugs/issue6703e.go:18:14
-[FAIL errorcheck: error does not match] "initialization loop|depends upon itself": m undefined (type litmethcall.T has no field or method m) testdata/gc/fixedbugs/issue6703f.go:18:14
+[FAIL errorcheck: missing error] "initialization loop|depends upon itself" testdata/gc/fixedbugs/issue6703e.go:18:16
+[FAIL errorcheck: missing error] "initialization loop|depends upon itself" testdata/gc/fixedbugs/issue6703f.go:18:18
 [FAIL errorcheck: missing error] "initialization loop|depends upon itself" testdata/gc/fixedbugs/issue6703g.go:20:13
 [FAIL errorcheck: missing error] "initialization loop|depends upon itself" testdata/gc/fixedbugs/issue6703h.go:20:19
 [FAIL errorcheck: missing error] "initialization loop|depends upon itself" testdata/gc/fixedbugs/issue6703i.go:20:15
