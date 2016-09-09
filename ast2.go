@@ -571,27 +571,35 @@ func (*CompLitValue) check(ctx *context, n CompositeLiteralValue, t Type) (stop 
 	var numField int
 	var keyed, unkeyed bool
 	m := map[mapKey]struct{}{}
-	tk := t.Kind()
+	tt := t
+	if t.Kind() == Ptr {
+		tt = t.Elem()
+	}
+	if tt == nil {
+		return
+	}
+
+	tk := tt.Kind()
 
 	switch tk {
 	case Array:
-		len = t.Len()
-		et = t.Elem()
+		len = tt.Len()
+		et = tt.Elem()
 		if len < 0 {
 			defer func() {
-				t.(*arrayType).len = maxIndex + 1
+				tt.(*arrayType).len = maxIndex + 1
 			}()
 		}
 	case Map:
-		kt = t.Key()
-		et = t.Elem()
+		kt = tt.Key()
+		et = tt.Elem()
 	case Slice:
-		et = t.Elem()
+		et = tt.Elem()
 		len = -1
 	case Struct:
-		numField = t.NumField()
+		numField = tt.NumField()
 	default:
-		ctx.err(n, "invalid type for composite literal: %s", t)
+		ctx.err(n, "invalid type for composite literal: %s", tt)
 		return false
 	}
 
@@ -760,7 +768,7 @@ func (*CompLitValue) check(ctx *context, n CompositeLiteralValue, t Type) (stop 
 						continue
 					}
 
-					field = t.FieldByName(fn.Val)
+					field = tt.FieldByName(fn.Val)
 					if field == nil {
 						todo(e, true) // unknown field
 						continue
@@ -851,7 +859,7 @@ func (*CompLitValue) check(ctx *context, n CompositeLiteralValue, t Type) (stop 
 						break
 					}
 
-					f := t.Field(int(index))
+					f := tt.Field(int(index))
 					if v != nil && f.Type != nil && !v.AssignableTo(f.Type) {
 						if ctx.err(val, "cannot use type %s as type %s in field value", v.Type(), f.Type) {
 							return true
