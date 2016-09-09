@@ -2314,6 +2314,18 @@ func (c *intConst) or(n Node, op Value) Value {
 				return newConstValue(d)
 			}
 		}
+	case RuntimeValue:
+		if !op.Type().IntegerType() {
+			todo(n, true) // need integer
+			break
+		}
+
+		if d := c.Convert(op.Type()); d == nil {
+			todo(n, true) // type/value mismatch
+			break
+		}
+
+		return newRuntimeValue(op.Type())
 	default:
 		//dbg("", op.Kind())
 		todo(n)
