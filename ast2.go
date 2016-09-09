@@ -3233,7 +3233,7 @@ func (n *StructType) check(ctx *context) (stop bool) {
 		sort.Sort(a)
 		sf := make([]StructField, 0, len(a))
 		var mta []Method
-		var fix *Type
+		var fixes []*Type
 		for _, f := range a {
 			if f.check(ctx) {
 				return true
@@ -3257,7 +3257,7 @@ func (n *StructType) check(ctx *context) (stop bool) {
 						for i := 0; i < mt.Type.NumIn(); i++ {
 							in = append(in, mt.Type.In(i))
 						}
-						fix = &in[0]
+						fixes = append(fixes, &in[0])
 						mt2.Type = newFuncType(ctx, mt.Name, in, mt.Type.Result(), isExported(mt.Name), mt.Type.IsVariadic())
 					default:
 						mt2 = *mt
@@ -3291,9 +3291,16 @@ func (n *StructType) check(ctx *context) (stop bool) {
 			})
 		}
 		n.Type = newStructType(ctx, sf, mta)
-		if fix != nil {
-			*fix = n.Type
+		for i := range fixes {
+			*fixes[i] = n.Type
 		}
+		//TODO- if n.Type.NumMethod() != 0 {
+		//TODO- 	dbg("==== %s: %s", position(n.Pos()), n.Type)
+		//TODO- 	for i := 0; i < n.Type.NumMethod(); i++ {
+		//TODO- 		m := n.Type.Method(i)
+		//TODO- 		dbg("%s %s", dict.S(m.Name), m.Type)
+		//TODO- 	}
+		//TODO- }
 	default:
 		panic("internal error")
 	}
