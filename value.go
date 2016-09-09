@@ -701,6 +701,7 @@ func (v *runtimeValue) Nil() bool {
 }
 
 func (v *runtimeValue) or(n Node, op Value) Value {
+	//ctx := v.Type().context()
 	ot := op.Type()
 	switch op.Kind() {
 	case ConstValue:
@@ -716,6 +717,13 @@ func (v *runtimeValue) or(n Node, op Value) Value {
 
 		if !v.Type().IntegerType() {
 			todo(n, true) // invalid operation
+			break
+		}
+
+		return newRuntimeValue(v.Type())
+	case RuntimeValue:
+		if !v.Type().Identical(ot) {
+			todo(n, true) //ctx.err(n, "invalid operation: | (mismatched types %s and %s)", v.Type(), ot)
 			break
 		}
 
@@ -764,7 +772,7 @@ func (v *runtimeValue) xor(n Node, op Value) Value {
 			break
 		}
 
-		todo(n)
+		return newRuntimeValue(v.Type())
 	default:
 		//dbg("", op.Kind())
 		todo(n)
