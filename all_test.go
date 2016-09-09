@@ -486,7 +486,7 @@ outer:
 
 			for _, v := range errCheckPatterns.FindAllSubmatch(e.S(), -1) {
 				re := v[1]
-				ok, err := regexp.MatchString(string(re), g.Error())
+				ok, err := regexp.MatchString(string(re), strings.SplitN(g.Error(), ": ", 2)[1])
 				if err != nil {
 					t.Fatal(err)
 				}

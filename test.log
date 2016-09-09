@@ -497,7 +497,7 @@
 [FAIL errorcheck: missing error] "not enough arguments to return" testdata/gc/fixedbugs/bug326.go:22:9
 [FAIL errorcheck: missing error] "invalid operation.*string|expected numeric" testdata/gc/fixedbugs/bug330.go:11:16
 [FAIL errorcheck: missing error] "invalid operation.*string|expected numeric" testdata/gc/fixedbugs/bug330.go:12:10
-[PASS errorcheck] "bug332": undefined T testdata/gc/fixedbugs/bug332.go:17:10
+[PASS errorcheck] "undefined T": undefined T testdata/gc/fixedbugs/bug332.go:17:10
 [FAIL errorcheck: missing error] "len|value computed is not used" testdata/gc/fixedbugs/bug337.go:17:13
 [FAIL errorcheck: missing error] "type" testdata/gc/fixedbugs/bug340.go:14:11
 [FAIL errorcheck: missing error] "type interface \{\}|reference to undefined field or method" testdata/gc/fixedbugs/bug340.go:15:11
@@ -1278,8 +1278,8 @@
 [FAIL errorcheck: missing error] "receiver.*interface|invalid pointer or interface receiver" testdata/gc/method2.go:24:37
 [FAIL errorcheck: missing error] "receiver.*interface|invalid pointer or interface receiver" testdata/gc/method2.go:25:37
 [PASS errorcheck] "method": (*main.Val).val undefined (type *main.Val has no method val) testdata/gc/method2.go:31:16
-[PASS errorcheck] "method": val undefined (type *main.Val is pointer to interface, not interface) testdata/gc/method2.go:36:12
-[PASS errorcheck] "method": val undefined (type *main.Val is pointer to interface, not interface) testdata/gc/method2.go:37:12
+[PASS errorcheck] "val undefined.*pointer to interface": val undefined (type *main.Val is pointer to interface, not interface) testdata/gc/method2.go:36:12
+[PASS errorcheck] "val undefined.*pointer to interface": val undefined (type *main.Val is pointer to interface, not interface) testdata/gc/method2.go:37:12
 [FAIL errorcheck: missing error] "cannot use.*type bool.*as type Bool" testdata/gc/named1.go:57:13
 [TODO "errorcheck -0 -N -d=nil"] testdata/gc/nilcheck.go
 [TODO "errorcheck -0 -d=nil"] testdata/gc/nilptr3.go
