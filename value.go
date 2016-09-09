@@ -701,7 +701,29 @@ func (v *runtimeValue) Nil() bool {
 }
 
 func (v *runtimeValue) or(n Node, op Value) Value {
-	todo(n)
+	ot := op.Type()
+	switch op.Kind() {
+	case ConstValue:
+		if !ot.IntegerType() {
+			todo(n, true) // need int
+			break
+		}
+
+		if !op.Const().Untyped() && !ot.AssignableTo(v.Type()) {
+			todo(n, true) // type mismatch
+			break
+		}
+
+		if !v.Type().IntegerType() {
+			todo(n, true) // invalid operation
+			break
+		}
+
+		return newRuntimeValue(v.Type())
+	default:
+		//dbg("", op.Kind())
+		todo(n)
+	}
 	return nil
 }
 
