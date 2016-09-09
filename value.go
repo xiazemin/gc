@@ -741,7 +741,30 @@ func (v *runtimeValue) rsh(n Node, op Value) Value {
 }
 
 func (v *runtimeValue) sub(n Node, op Value) Value {
-	todo(n)
+	if !v.Type().Numeric() {
+		todo(n, true) // invalid operand
+		return nil
+	}
+
+	ot := op.Type()
+	if ot == nil {
+		return nil
+	}
+
+	if !ot.Numeric() {
+		todo(n, true) // invalid operand
+		return nil
+	}
+
+	switch op.Kind() {
+	case ConstValue:
+		if op.Const().Untyped() && op.AssignableTo(v.Type()) || v.Type().Identical(ot) {
+			return newRuntimeValue(v.Type())
+		}
+	default:
+		//dbg("", op.Kind())
+		todo(n)
+	}
 	return nil
 }
 
@@ -755,7 +778,7 @@ func (v *runtimeValue) xor(n Node, op Value) Value {
 			break
 		}
 
-		if !op.Const().Untyped() && !ot.AssignableTo(v.Type()) {
+		if !op.Const().Untyped() && !ot.AssignableTo(v.Type()) { //TODO see .sub
 			todo(n, true) // type mismatch
 			break
 		}

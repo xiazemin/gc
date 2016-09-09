@@ -224,8 +224,11 @@ func builtinLen(ctx *context, call *Call) Value {
 					return newConstValue(newIntConst(len, nil, ctx.intType, true))
 				}
 			}
+		case Slice:
+			return newRuntimeValue(ctx.intType)
 		default:
-			ctx.err(call.ArgumentList, "const initializer is not a constant")
+			//dbg("", t.Kind())
+			todo(call)
 		}
 	default:
 		//dbg("", v.Kind())
