@@ -420,7 +420,6 @@
 [PASS errorcheck] "String": String undefined (type int has no field or method String) testdata/gc/fixedbugs/bug241.go:10:11
 [PASS errorcheck] "chan|incompatible": cannot use type chan <-chan int as type chan<- chan int in assignment testdata/gc/fixedbugs/bug249.go:10:27
 [PASS errorcheck] "chan|incompatible": cannot use type chan<- chan int as type chan <-chan int in assignment testdata/gc/fixedbugs/bug249.go:26:28
-[FAIL errorcheck: extra error] interface type loop involving I2 testdata/gc/fixedbugs/bug251.go:11:2
 [PASS errorcheck] "loop|interface": interface contains embedded non-interface I1 testdata/gc/fixedbugs/bug251.go:15:2
 [FAIL errorcheck: extra error] cannot use type main.I2 as type main.I1 in assignment:\n\tmain.I2 does not implement main.I1 (missing m method) testdata/gc/fixedbugs/bug251.go:19:13
 [FAIL errorcheck: missing error] "cannot use|incompatible" testdata/gc/fixedbugs/bug252.go:14:10

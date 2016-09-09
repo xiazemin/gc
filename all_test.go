@@ -525,11 +525,18 @@ func TestTmp(t *testing.T) {
 	if err := p.loadString("", `
 package foo
 
-var removeNewlinesMapper = func(r rune) rune {
-	if r == '\r' || r == '\n' {
-		return -1
-	}
-	return r
+type common struct {
+	sub      []*T 
+}
+
+type T struct {
+	common
+}
+
+func (c *common) private() {}
+
+type B struct {
+	common
 }
 `,
 	); err != nil {

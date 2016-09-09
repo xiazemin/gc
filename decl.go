@@ -767,6 +767,38 @@ func (n *TypeDeclaration) check(ctx *context) (stop bool) {
 		ctx = ctx.setNode(t0.StructType.Token2)
 	}
 
+	var a declarations
+	if n.methods != nil {
+		s := n.methods
+		a = make(declarations, 0, len(s.Bindings)+len(s.Unbound))
+		for _, d := range s.Bindings {
+			a = append(a, d)
+		}
+		for _, d := range s.Unbound {
+			a = append(a, d)
+		}
+		sort.Sort(a)
+		var mta []Method
+		var index int
+		for _, m := range a {
+			if m.check(ctx) {
+				return true
+			}
+
+			if m.Name() != idUnderscore {
+				var pth int
+				fd := m.(*FuncDeclaration)
+				if !fd.isExported {
+					pth = n.pkgPath
+				}
+				mt := Method{m.Name(), pth, fd.Type, index, false}
+				index++
+				mta = append(mta, mt)
+			}
+		}
+		n.typeBase.methods = mta
+	}
+
 	t0 := n.typ0
 	if t0 == nil {
 		return false
@@ -793,50 +825,20 @@ func (n *TypeDeclaration) check(ctx *context) (stop bool) {
 	n.fieldAlign = t.FieldAlign()
 	n.size = t.Size()
 	t = n
-	if n.methods != nil {
-		s := n.methods
-		a := make(declarations, 0, len(s.Bindings)+len(s.Unbound))
-		for _, d := range s.Bindings {
-			a = append(a, d)
+	switch t.Kind() {
+	case Ptr:
+		for _, m := range a {
+			if ctx.err(m, "invalid receiver type %s (%s is a pointer type)", t, t) {
+				return true
+			}
 		}
-		for _, d := range s.Unbound {
-			a = append(a, d)
-		}
-		sort.Sort(a)
-		switch {
-		case t.Kind() == Ptr:
-			for _, m := range a {
-				if ctx.err(m, "invalid receiver type %s (%s is a pointer type)", t, t) {
+	case Interface:
+		for _, m := range a {
+			if fd := m.(*FuncDeclaration); !fd.ifaceMethod {
+				if ctx.err(m, "invalid receiver type %s (%s is an interface type)", t, t) {
 					return true
 				}
 			}
-		default:
-			var mta []Method
-			var index int
-			for _, m := range a {
-				if m.check(ctx) {
-					return true
-				}
-
-				if m.Name() != idUnderscore {
-					var pth int
-					fd := m.(*FuncDeclaration)
-					if t.Kind() == Interface && !fd.ifaceMethod {
-						if ctx.err(m, "invalid receiver type %s (%s is an interface type)", t, t) {
-							return true
-						}
-						continue
-					}
-
-					if !fd.isExported {
-						pth = n.pkgPath
-					}
-					mt := Method{m.Name(), pth, fd.Type, index, false}
-					index++
-					mta = append(mta, mt)
-				}
-			}
-			n.typeBase.methods = mta
 		}
 	}
 	if n.pkg.unsafe && n.Name() == idPointer {
@@ -1373,7 +1375,7 @@ func (g *gate) check(ctx *context, d Declaration, t Type) (done, stop bool) {
 		var a []Declaration
 		for _, v := range stack[:len(stack)-1] {
 			if v == d {
-				a = append(a, v)
+				a = append(a, v) //TODO no need to collect all instances.
 			}
 		}
 		if len(a) == 0 {

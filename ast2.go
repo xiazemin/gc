@@ -3240,31 +3240,41 @@ func (n *StructType) check(ctx *context) (stop bool) {
 				return true
 			}
 
-			if ft := f.Type; ft != nil && f.isAnonymous && ft.NumMethod() != 0 {
-				for i := 0; i < ft.NumMethod(); i++ {
-					mt := ft.Method(i)
-					if _, ok := m[mt.Name]; ok {
-						continue
-					}
-
-					m[mt.Name] = struct{}{}
-					var mt2 Method
-					switch {
-					case ft.Kind() == Interface:
-						// Merge interface method, must synthesize new method w/ receiver.
-						mt2 = *mt
-						in := []Type{nil}
-						for i := 0; i < mt.Type.NumIn(); i++ {
-							in = append(in, mt.Type.In(i))
+			if ft := f.Type; ft != nil && f.isAnonymous {
+				ptr := ft.Kind() == Ptr
+				if ptr {
+					ft = ft.Elem()
+				}
+				if ft != nil && ft.NumMethod() != 0 {
+					for i := 0; i < ft.NumMethod(); i++ {
+						mt := ft.Method(i)
+						if _, ok := m[mt.Name]; ok {
+							continue
 						}
-						fixes = append(fixes, &in[0])
-						mt2.Type = newFuncType(ctx, mt.Name, in, mt.Type.Result(), isExported(mt.Name), mt.Type.IsVariadic())
-					default:
-						mt2 = *mt
+
+						m[mt.Name] = struct{}{}
+						var mt2 Method
+						switch {
+						case ft.Kind() == Interface:
+							if ptr {
+								break
+							}
+
+							// Merge interface method, must synthesize new method w/ receiver.
+							mt2 = *mt
+							in := []Type{nil}
+							for i := 0; i < mt.Type.NumIn(); i++ {
+								in = append(in, mt.Type.In(i))
+							}
+							fixes = append(fixes, &in[0])
+							mt2.Type = newFuncType(ctx, mt.Name, in, mt.Type.Result(), isExported(mt.Name), mt.Type.IsVariadic())
+						default:
+							mt2 = *mt
+						}
+						mt2.merged = true
+						mt2.Index = len(mta)
+						mta = append(mta, mt2)
 					}
-					mt2.merged = true
-					mt2.Index = len(mta)
-					mta = append(mta, mt2)
 				}
 			}
 
@@ -3294,13 +3304,6 @@ func (n *StructType) check(ctx *context) (stop bool) {
 		for i := range fixes {
 			*fixes[i] = n.Type
 		}
-		//TODO- if n.Type.NumMethod() != 0 {
-		//TODO- 	dbg("==== %s: %s", position(n.Pos()), n.Type)
-		//TODO- 	for i := 0; i < n.Type.NumMethod(); i++ {
-		//TODO- 		m := n.Type.Method(i)
-		//TODO- 		dbg("%s %s", dict.S(m.Name), m.Type)
-		//TODO- 	}
-		//TODO- }
 	default:
 		panic("internal error")
 	}

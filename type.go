@@ -1321,8 +1321,10 @@ func (t *structType) Identical(u Type) bool {
 func (t *structType) str(w *bytes.Buffer) {
 	w.WriteString("struct{")
 	for i, v := range t.fields {
-		w.Write(dict.S(v.Name))
-		w.WriteByte(' ')
+		if !v.Anonymous {
+			w.Write(dict.S(v.Name))
+			w.WriteByte(' ')
+		}
 		safeTypeStr(v.Type, w)
 		if i != len(t.fields)-1 {
 			w.WriteString("; ")
