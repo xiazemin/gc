@@ -832,6 +832,7 @@ func (*CompLitValue) check(ctx *context, n CompositeLiteralValue, t Type) (stop 
 				}
 				m[k] = struct{}{}
 				if v != nil && !v.AssignableTo(et) {
+					//dbg("", position(val.Pos()))
 					if ctx.compositeLiteralValueFail(val, v, et) {
 						return true
 					}
