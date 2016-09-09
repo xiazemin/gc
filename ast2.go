@@ -3234,13 +3234,13 @@ func (n *StructType) check(ctx *context) (stop bool) {
 		sf := make([]StructField, 0, len(a))
 		var mta []Method
 		var fixes []*Type
+		m := map[int]struct{}{}
 		for _, f := range a {
 			if f.check(ctx) {
 				return true
 			}
 
 			if ft := f.Type; ft != nil && f.isAnonymous && ft.NumMethod() != 0 {
-				m := map[int]struct{}{}
 				for i := 0; i < ft.NumMethod(); i++ {
 					mt := ft.Method(i)
 					if _, ok := m[mt.Name]; ok {
