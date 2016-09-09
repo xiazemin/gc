@@ -1275,8 +1275,8 @@
 [PASS errorcheck] "redeclared|redefinition": g redeclared, previous declaration at testdata/gc/method1.go:23:6 testdata/gc/method1.go:24:6
 [PASS errorcheck] "receiver.* pointer|invalid pointer or interface receiver": invalid receiver type main.P (main.P is a pointer type) testdata/gc/method2.go:18:12
 [PASS errorcheck] "receiver.* pointer|invalid pointer or interface receiver": invalid receiver type main.P1 (main.P1 is a pointer type) testdata/gc/method2.go:19:14
-[FAIL errorcheck: missing error] "receiver.*interface|invalid pointer or interface receiver" testdata/gc/method2.go:24:37
-[FAIL errorcheck: missing error] "receiver.*interface|invalid pointer or interface receiver" testdata/gc/method2.go:25:37
+[PASS errorcheck] "receiver.*interface|invalid pointer or interface receiver": invalid receiver type main.I (main.I is an interface type) testdata/gc/method2.go:24:12
+[PASS errorcheck] "receiver.*interface|invalid pointer or interface receiver": invalid receiver type main.I1 (main.I1 is an interface type) testdata/gc/method2.go:25:14
 [PASS errorcheck] "method": (*main.Val).val undefined (type *main.Val has no method val) testdata/gc/method2.go:31:16
 [PASS errorcheck] "val undefined.*pointer to interface": val undefined (type *main.Val is pointer to interface, not interface) testdata/gc/method2.go:36:12
 [PASS errorcheck] "val undefined.*pointer to interface": val undefined (type *main.Val is pointer to interface, not interface) testdata/gc/method2.go:37:12

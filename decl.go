@@ -821,6 +821,13 @@ func (n *TypeDeclaration) check(ctx *context) (stop bool) {
 				if m.Name() != idUnderscore {
 					var pth int
 					fd := m.(*FuncDeclaration)
+					if t.Kind() == Interface && !fd.ifaceMethod {
+						if ctx.err(m, "invalid receiver type %s (%s is an interface type)", t, t) {
+							return true
+						}
+						continue
+					}
+
 					if !fd.isExported {
 						pth = n.pkgPath
 					}
