@@ -66,6 +66,7 @@ type lexer struct {
 	build                bool // Whether build tags, if any, satisfied.
 	closed               bool // Error limit reached.
 	constExpr            *ExpressionList
+	constType            *Typ
 	ctx                  *context
 	declarationScope     *Scope
 	dotImports           []*ImportDeclaration

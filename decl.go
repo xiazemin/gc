@@ -373,7 +373,11 @@ func (n *ConstDeclaration) check(ctx *context) (stop bool) {
 		return false
 	}
 
-	ctx2 := ctx.setErrNode(n)
+	var n2 Node
+	if n.sharedExpr {
+		n2 = n
+	}
+	ctx2 := ctx.setErrNode(n2)
 	ctx2.iota = newConstValue(newIntConst(n.iota, nil, ctx.intType, true))
 	if n.expr.check(ctx2) {
 		return true

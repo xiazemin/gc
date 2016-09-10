@@ -901,6 +901,7 @@ func (n *ConstSpec) decl(lx *lexer, t *Typ, el *ExpressionList) {
 
 	if el != nil && lx.firstConstSpec {
 		lx.constExpr = el
+		lx.constType = t
 	}
 	el0 := el
 	shared := false
@@ -908,6 +909,9 @@ func (n *ConstSpec) decl(lx *lexer, t *Typ, el *ExpressionList) {
 		shared = true
 		el0 = lx.constExpr
 	}
+	//TODO if t == nil {
+	//TODO 	t = lx.constType
+	//TODO }
 	if el0 == nil && lx.firstConstSpec {
 		lx.err(n, "constant declaration must have expression")
 		return
