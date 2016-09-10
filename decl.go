@@ -730,14 +730,12 @@ type TypeDeclaration struct {
 
 func newTypeDeclaration(lx *lexer, nm xc.Token, typ0 *Typ) *TypeDeclaration {
 	var pkgPath, qualifier int
-	var ctx *Context
 	var pkg *Package
 	if lx != nil {
 		pkgPath = lx.pkg.importPath
 		if pkgPath != 0 {
 			qualifier = lx.pkg.name
 		}
-		ctx = lx.Context
 		pkg = lx.pkg
 	}
 	t := &TypeDeclaration{
@@ -747,7 +745,7 @@ func newTypeDeclaration(lx *lexer, nm xc.Token, typ0 *Typ) *TypeDeclaration {
 		pos:        nm.Pos(),
 		qualifier:  qualifier,
 		typ0:       typ0,
-		typeBase:   typeBase{ctx: ctx, pkgPath: pkgPath},
+		typeBase:   typeBase{pkgPath: pkgPath},
 	}
 	t.typeBase.typ = t
 	return t
@@ -1133,7 +1131,7 @@ func (n *VarDeclaration) check(ctx *context) (stop bool) {
 		switch v.Kind() {
 		case ConstValue:
 			c := v.Const()
-			if !c.AssignableTo(n.Type) {
+			if !c.AssignableTo(ctx.Context, n.Type) {
 				ctx.constAssignmentFail(n.expr, n.Type, c)
 			}
 		case NilValue:
@@ -1462,12 +1460,4 @@ func (c *context) setErrf(f func(*gate) bool) *context {
 	d := *c
 	d.errf = f
 	return &d
-}
-
-func (c *context) mustConvertConst(n Node, t Type, d Const) Const {
-	if c.loopErrNode != nil {
-		n = c.loopErrNode
-	}
-
-	return c.Context.mustConvertConst(n, t, d)
 }

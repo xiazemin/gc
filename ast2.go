@@ -199,7 +199,7 @@ func (n *ArrayType) check(ctx *context) (stop bool) {
 			break
 		}
 
-		n.Type = newArrayType(ctx, t, -1, 0)
+		n.Type = newArrayType(t, -1, 0)
 		if cv := n.compLitValue; cv != nil {
 			return (*CompLitValue)(nil).check(ctx, cv, n.Type)
 		}
@@ -225,14 +225,14 @@ func (n *ArrayType) check(ctx *context) (stop bool) {
 		case ConstValue:
 			switch c := v.Const(); c.Kind() {
 			case FloatingPointConst:
-				if !c.nonNegativeInteger() {
+				if !c.nonNegativeInteger(ctx) {
 					return ctx.constAssignmentFail(n.Expression, ctx.intType, c)
 				}
 
-				if d := c.Convert(ctx.intType); d != nil {
+				if d := c.Convert(ctx.Context, ctx.intType); d != nil {
 					val := d.Const().(*intConst).val
 					if val >= 0 {
-						n.Type = newArrayType(ctx, t, val, n.Expression.flags)
+						n.Type = newArrayType(t, val, n.Expression.flags)
 						break
 					}
 
@@ -242,10 +242,10 @@ func (n *ArrayType) check(ctx *context) (stop bool) {
 
 				return ctx.err(n.Expression, "array bound is too large")
 			case IntConst:
-				if d := c.Convert(ctx.intType); d != nil {
+				if d := c.Convert(ctx.Context, ctx.intType); d != nil {
 					val := d.Const().(*intConst).val
 					if val >= 0 {
-						n.Type = newArrayType(ctx, t, val, n.Expression.flags)
+						n.Type = newArrayType(t, val, n.Expression.flags)
 						break
 					}
 
@@ -326,7 +326,7 @@ func (n *Assignment) check(ctx *context) (stop bool) {
 					break
 				}
 
-				if !rv.AssignableTo(lt) {
+				if !rv.AssignableTo(ctx.Context, lt) {
 					todo(n, true) // type mismatch
 				}
 			}
@@ -649,7 +649,7 @@ func (*CompLitValue) check(ctx *context, n CompositeLiteralValue, t Type) (stop 
 						break
 					}
 
-					if v.Kind() != ConstValue || !v.nonNegativeInteger() {
+					if v.Kind() != ConstValue || !v.nonNegativeInteger(ctx) {
 						if ctx.err(e, "index must be non-negative integer constant") {
 							return true
 						}
@@ -690,7 +690,7 @@ func (*CompLitValue) check(ctx *context, n CompositeLiteralValue, t Type) (stop 
 						break
 					}
 
-					if !v.AssignableTo(kt) {
+					if !v.AssignableTo(ctx.Context, kt) {
 						switch v.Kind() {
 						case ConstValue:
 							if ctx.err(e, "cannot use %s (type %s) as type %s in map key", v.Const(), v.Type(), kt) {
@@ -733,7 +733,7 @@ func (*CompLitValue) check(ctx *context, n CompositeLiteralValue, t Type) (stop 
 						var k mapKey
 						switch ck.Kind() {
 						case IntConst, RuneConst:
-							if d := ck.Convert(ctx.intType); d != nil {
+							if d := ck.Convert(ctx.Context, ctx.intType); d != nil {
 								k.i = d.Const().(*intConst).val
 								break
 							}
@@ -831,7 +831,7 @@ func (*CompLitValue) check(ctx *context, n CompositeLiteralValue, t Type) (stop 
 					todo(val, true) // dup index
 				}
 				m[k] = struct{}{}
-				if v != nil && !v.AssignableTo(et) {
+				if v != nil && !v.AssignableTo(ctx.Context, et) {
 					//dbg("", position(val.Pos()))
 					if ctx.compositeLiteralValueFail(val, v, et) {
 						return true
@@ -840,14 +840,14 @@ func (*CompLitValue) check(ctx *context, n CompositeLiteralValue, t Type) (stop 
 				maxIndex = mathutil.MaxInt64(maxIndex, index)
 				index++
 			case Map:
-				if v != nil && !v.AssignableTo(et) {
+				if v != nil && !v.AssignableTo(ctx.Context, et) {
 					todo(val, true)
 				}
 			case Struct:
 				switch {
 				case hasKey:
 					keyed = true
-					if v != nil && field.Type != nil && !v.AssignableTo(field.Type) {
+					if v != nil && field.Type != nil && !v.AssignableTo(ctx.Context, field.Type) {
 						todo(val, true)
 					}
 				default:
@@ -861,7 +861,7 @@ func (*CompLitValue) check(ctx *context, n CompositeLiteralValue, t Type) (stop 
 					}
 
 					f := tt.Field(int(index))
-					if v != nil && f.Type != nil && !v.AssignableTo(f.Type) {
+					if v != nil && f.Type != nil && !v.AssignableTo(ctx.Context, f.Type) {
 						if ctx.err(val, "cannot use type %s as type %s in field value", v.Type(), f.Type) {
 							return true
 						}
@@ -1011,43 +1011,43 @@ func (n *Expression) check(ctx *context) (stop bool) {
 		n.Value = n.UnaryExpression.Value
 		//dbg("%p", n.Value)
 	case 1: // Expression '%' Expression
-		n.Value = n.Expression.Value.mod(n.Token, n.Expression2.Value)
+		n.Value = n.Expression.Value.mod(ctx, n.Token, n.Expression2.Value)
 	case 2: // Expression '&' Expression
-		n.Value = n.Expression.Value.and(n.Token, n.Expression2.Value)
+		n.Value = n.Expression.Value.and(ctx, n.Token, n.Expression2.Value)
 	case 3: // Expression '*' Expression
-		n.Value = n.Expression.Value.mul(n.Token, n.Expression2.Value)
+		n.Value = n.Expression.Value.mul(ctx, n.Token, n.Expression2.Value)
 	case 4: // Expression '+' Expression
-		n.Value = n.Expression.Value.add(n.Token, n.Expression2.Value)
+		n.Value = n.Expression.Value.add(ctx, n.Token, n.Expression2.Value)
 	case 5: // Expression '-' Expression
-		n.Value = n.Expression.Value.sub(n.Token, n.Expression2.Value)
+		n.Value = n.Expression.Value.sub(ctx, n.Token, n.Expression2.Value)
 	case 6: // Expression '/' Expression
-		n.Value = n.Expression.Value.div(n.Token, n.Expression2.Value)
+		n.Value = n.Expression.Value.div(ctx, n.Token, n.Expression2.Value)
 	case 7: // Expression '<' Expression
-		n.Value = n.Expression.Value.lt(n.Token, n.Expression2.Value)
+		n.Value = n.Expression.Value.lt(ctx, n.Token, n.Expression2.Value)
 	case 8: // Expression '>' Expression
-		n.Value = n.Expression.Value.gt(n.Token, n.Expression2.Value)
+		n.Value = n.Expression.Value.gt(ctx, n.Token, n.Expression2.Value)
 	case 9: // Expression '^' Expression
-		n.Value = n.Expression.Value.xor(n.Token, n.Expression2.Value)
+		n.Value = n.Expression.Value.xor(ctx, n.Token, n.Expression2.Value)
 	case 10: // Expression '|' Expression
-		n.Value = n.Expression.Value.or(n.Token, n.Expression2.Value)
+		n.Value = n.Expression.Value.or(ctx, n.Token, n.Expression2.Value)
 	case 11: // Expression "&&" Expression
-		n.Value = n.Expression.Value.boolAnd(n.Token, n.Expression2.Value)
+		n.Value = n.Expression.Value.boolAnd(ctx, n.Token, n.Expression2.Value)
 	case 12: // Expression "&^" Expression
-		n.Value = n.Expression.Value.andNot(n.Token, n.Expression2.Value)
+		n.Value = n.Expression.Value.andNot(ctx, n.Token, n.Expression2.Value)
 	case 13: // Expression "==" Expression
-		n.Value = n.Expression.Value.eq(n.Token, n.Expression2.Value)
+		n.Value = n.Expression.Value.eq(ctx, n.Token, n.Expression2.Value)
 	case 14: // Expression ">=" Expression
-		n.Value = n.Expression.Value.ge(n.Token, n.Expression2.Value)
+		n.Value = n.Expression.Value.ge(ctx, n.Token, n.Expression2.Value)
 	case 15: // Expression "<=" Expression
 		todo(n)
 	case 16: // Expression "<<" Expression
-		n.Value = n.Expression.Value.lsh(n.Token, n.Expression2.Value)
+		n.Value = n.Expression.Value.lsh(ctx, n.Token, n.Expression2.Value)
 	case 17: // Expression "!=" Expression
-		n.Value = n.Expression.Value.neq(n.Token, n.Expression2.Value)
+		n.Value = n.Expression.Value.neq(ctx, n.Token, n.Expression2.Value)
 	case 18: // Expression "||" Expression
-		n.Value = n.Expression.Value.boolOr(n.Token, n.Expression2.Value)
+		n.Value = n.Expression.Value.boolOr(ctx, n.Token, n.Expression2.Value)
 	case 19: // Expression ">>" Expression
-		n.Value = n.Expression.Value.rsh(n.Token, n.Expression2.Value)
+		n.Value = n.Expression.Value.rsh(ctx, n.Token, n.Expression2.Value)
 	case 20: // Expression "<-" Expression
 		n.Value = newRuntimeValue(ctx.voidType)
 	default:
@@ -1795,12 +1795,11 @@ func (n *Parameters) check(ctx *context) (stop bool) {
 
 // ---------------------------------------------------------- PrimaryExpression
 
-func (n *PrimaryExpression) checkConversion(node Node, t Type, arg Value) {
+func (n *PrimaryExpression) checkConversion(ctx *context, node Node, t Type, arg Value) {
 	if t == nil || arg == nil {
 		return
 	}
 
-	ctx := t.context()
 	if t := arg.Type(); t != nil && !t.ConvertibleTo(t) {
 		ctx.err(node, "cannot convert type %s to %s", arg.Type(), t)
 		return
@@ -1809,15 +1808,15 @@ func (n *PrimaryExpression) checkConversion(node Node, t Type, arg Value) {
 	switch arg.Kind() {
 	case ConstValue:
 		c := arg.Const()
-		if n.Value = c.Convert(t); n.Value == nil {
+		if n.Value = c.Convert(ctx.Context, t); n.Value == nil {
 			ctx.constConversionFail(node, t, c)
 		}
 	case NilValue:
-		if n.Value = arg.Convert(t); n.Value == nil {
+		if n.Value = arg.Convert(ctx.Context, t); n.Value == nil {
 			ctx.mustConvertNil(node, t)
 		}
 	case RuntimeValue:
-		if n.Value = arg.Convert(t); n.Value == nil {
+		if n.Value = arg.Convert(ctx.Context, t); n.Value == nil {
 			switch {
 			case t.Kind() == Interface:
 				arg.Type().implementsFailed(ctx, node, "cannot convert %s to type %s:", t)
@@ -1877,7 +1876,7 @@ func (n *PrimaryExpression) checkCall(ctx *context, ft Type, skip int) (stop boo
 		}
 
 		for i, arg := range args {
-			if arg != nil && !arg.AssignableTo(n.variadicParam(ft, i+skip)) {
+			if arg != nil && !arg.AssignableTo(ctx.Context, n.variadicParam(ft, i+skip)) {
 				ctx.valueAssignmentFail(n.Call.ArgumentList.node(i), n.variadicParam(ft, i+skip), arg)
 			}
 		}
@@ -2029,7 +2028,7 @@ func (n *PrimaryExpression) checkSliceIndex(ctx *context, o *ExpressionOpt) Cons
 		return nil
 	}
 
-	if !v.Type().Numeric() || !v.nonNegativeInteger() {
+	if !v.Type().Numeric() || !v.nonNegativeInteger(ctx) {
 		todo(n, true) // non-integer index
 		return nil
 	}
@@ -2042,7 +2041,7 @@ func (n *PrimaryExpression) checkSliceIndex(ctx *context, o *ExpressionOpt) Cons
 		return nil
 	}
 
-	if c := v.Const().Convert(ctx.intType); c != nil {
+	if c := v.Const().Convert(ctx.Context, ctx.intType); c != nil {
 		return c.Const()
 	}
 
@@ -2330,7 +2329,7 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 					return false
 				}
 
-				if !constX.nonNegativeInteger() {
+				if !constX.nonNegativeInteger(ctx) {
 					todo(n.Expression, true) // < 0
 					return false
 				}
@@ -2405,7 +2404,7 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 			}
 
 			n.flags = n.flags | kt.flags()
-			if !x.AssignableTo(kt) {
+			if !x.AssignableTo(ctx.Context, kt) {
 				todo(n, true) // invalid index type
 				break
 			}
@@ -2558,7 +2557,7 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 			case 0:
 				todo(n, true)
 			case 1:
-				n.checkConversion(n.Call.ArgumentList.Argument, t, args[0])
+				n.checkConversion(ctx, n.Call.ArgumentList.Argument, t, args[0])
 			default:
 				todo(n, true)
 			}
@@ -2587,7 +2586,7 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 		}
 	case 10: // TypeLiteral '(' Expression CommaOpt ')'
 		t := n.TypeLiteral.Type
-		n.checkConversion(n.Expression, t, n.Expression.Value)
+		n.checkConversion(ctx, n.Expression, t, n.Expression.Value)
 		if t != nil {
 			n.flags = n.flags | t.flags()
 		}
@@ -2817,7 +2816,7 @@ func (n *ResultOpt) check(ctx *context) (stop bool) {
 		case 1:
 			n.Type = a[0]
 		default:
-			n.Type = newTupleType(ctx, a)
+			n.Type = newTupleType(a)
 		}
 	case 2: // Typ
 		n.Type = n.Typ.Type
@@ -2938,7 +2937,7 @@ func (n *SimpleStatement) check(ctx *context, used bool) (stop bool) {
 			case d.Type == nil:
 				d.Type = v.Type()
 			default:
-				if !v.AssignableTo(d.Type) {
+				if !v.AssignableTo(ctx.Context, d.Type) {
 					todo(rhs[i], true)
 					//if ctx.valueAssignmentFail(rhs[i], d.Type, v) {
 					//	return true
@@ -3127,7 +3126,7 @@ func (n *StatementNonDecl) check(ctx *context) (stop bool) {
 						continue
 					}
 
-					if !v.AssignableTo(rte[i]) {
+					if !v.AssignableTo(ctx.Context, rte[i]) {
 						todo(n, true) // type mismatch
 					}
 				}
@@ -3141,7 +3140,7 @@ func (n *StatementNonDecl) check(ctx *context) (stop bool) {
 				break
 			}
 
-			if !v.AssignableTo(rt) {
+			if !v.AssignableTo(ctx.Context, rt) {
 				todo(n, true) // type mismatch
 			}
 		}
@@ -3230,7 +3229,7 @@ func (n *StructType) check(ctx *context) (stop bool) {
 
 	switch n.Case {
 	case 0: // "struct" LBrace '}'
-		n.Type = newStructType(ctx, nil, nil)
+		n.Type = newStructType(nil, nil)
 	case 1: // "struct" LBrace StructFieldDeclList SemicolonOpt '}'
 		s := n.fields
 		a := make(fields, 0, len(s.Bindings)+len(s.Unbound))
@@ -3310,7 +3309,7 @@ func (n *StructType) check(ctx *context) (stop bool) {
 				f.isAnonymous,
 			})
 		}
-		n.Type = newStructType(ctx, sf, mta)
+		n.Type = newStructType(sf, mta)
 		for i := range fixes {
 			*fixes[i] = n.Type
 		}
@@ -3644,7 +3643,7 @@ func (n *UnaryExpression) check(ctx *context) (stop bool) {
 	case 4: // '-' UnaryExpression
 		switch v.Kind() {
 		case ConstValue:
-			n.Value = v.neg(ctx.Context, n.UnaryExpression)
+			n.Value = v.neg(ctx, n.UnaryExpression)
 		default:
 			//dbg("", v.Kind())
 			todo(n)
@@ -3652,7 +3651,7 @@ func (n *UnaryExpression) check(ctx *context) (stop bool) {
 	case 5: // '^' UnaryExpression
 		switch v.Kind() {
 		case ConstValue:
-			n.Value = v.cpl(ctx.Context, n.UnaryExpression)
+			n.Value = v.cpl(ctx, n.UnaryExpression)
 		default:
 			//dbg("", v.Kind())
 			todo(n)

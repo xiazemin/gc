@@ -107,10 +107,9 @@ type Type interface {
 	// Methods applicable to all types.
 
 	base() *typeBase
-	context() *Context
 	field(int) Type
 	flags() flags
-	implementsFailed(*Context, Node, string, Type) bool
+	implementsFailed(*context, Node, string, Type) bool
 	isNamed() bool
 	numField() int
 	setOffset(int, uint64)
@@ -240,7 +239,7 @@ type Type interface {
 	// Bits returns the size of the type in bits.  It panics if the type's
 	// Kind is not one of the sized or unsized Int, Uint, Float, or Complex
 	// kinds.
-	Bits() int
+	Bits(*Context) int
 
 	// ChanDir returns a channel type's direction.  It panics if the type's
 	// Kind is not Chan.
@@ -373,7 +372,6 @@ func (s *StructField) typ() Type { return s.Type }
 
 type typeBase struct {
 	align      int
-	ctx        *Context
 	fieldAlign int
 	kind       Kind
 	methods    []Method
@@ -385,7 +383,6 @@ type typeBase struct {
 func (t *typeBase) Align() int                        { return t.align }
 func (t *typeBase) base() *typeBase                   { return t }
 func (t *typeBase) ChanDir() ChanDir                  { panic("ChanDir of non-chan type") }
-func (t *typeBase) context() *Context                 { return t.ctx }
 func (t *typeBase) Elements() []Type                  { panic("Elements of non-tuple type") }
 func (t *typeBase) Field(int) *StructField            { panic("Field of non-struct type") }
 func (t *typeBase) field(int) Type                    { panic("internal error") }
@@ -463,7 +460,7 @@ func (t *typeBase) AssignableTo(u Type) bool {
 	return false
 }
 
-func (t *typeBase) Bits() int {
+func (t *typeBase) Bits(ctx *Context) int {
 	switch t.Kind() {
 	case Int8, Uint8:
 		return 8
@@ -474,7 +471,7 @@ func (t *typeBase) Bits() int {
 	case Int64, Uint64, Float64, Complex64:
 		return 64
 	case Int, Uint:
-		return t.context().model.IntBytes * 8
+		return ctx.model.IntBytes * 8
 	case Complex128:
 		return 128
 	}
@@ -641,7 +638,7 @@ func (t *typeBase) FloatingPointType() bool {
 	return k == Float32 || k == Float64
 }
 
-func (t *typeBase) implementsFailed(ctx *Context, n Node, msg string, u Type) (stop bool) {
+func (t *typeBase) implementsFailed(ctx *context, n Node, msg string, u Type) (stop bool) {
 	if u.Kind() != Interface {
 		panic("internal error")
 	}
@@ -857,11 +854,10 @@ type arrayType struct {
 	flgs flags
 }
 
-func newArrayType(ctx *context, elem Type, len int64, flags flags) *arrayType {
+func newArrayType(elem Type, len int64, flags flags) *arrayType {
 	t := &arrayType{elem: elem, len: len}
 	t.flgs = flags
 	t.align = elem.Align()
-	t.ctx = ctx.Context
 	t.fieldAlign = elem.FieldAlign()
 	t.kind = Array
 	t.size = elem.Size() * uint64(len)
@@ -904,7 +900,6 @@ type chanType struct {
 func newChanType(ctx *context, dir ChanDir, elem Type) *chanType {
 	t := &chanType{dir: dir, elem: elem}
 	t.align = ctx.model.PtrBytes
-	t.ctx = ctx.Context
 	t.fieldAlign = ctx.model.PtrBytes
 	t.kind = Chan
 	t.size = uint64(ctx.model.PtrBytes)
@@ -952,7 +947,6 @@ type funcType struct {
 func newFuncType(ctx *context, name int, in []Type, result Type, isExported, isVariadic bool) *funcType {
 	t := &funcType{name: name, in: in, result: result, isExported: isExported, isVariadic: isVariadic}
 	t.align = ctx.model.PtrBytes
-	t.ctx = ctx.Context
 	t.fieldAlign = ctx.model.PtrBytes
 	t.kind = Func
 	t.size = uint64(ctx.model.PtrBytes)
@@ -1078,7 +1072,6 @@ type interfaceType struct {
 func newInterfaceType(ctx *context, methods []Method) *interfaceType {
 	t := &interfaceType{}
 	t.align = ctx.model.PtrBytes
-	t.ctx = ctx.Context
 	t.fieldAlign = ctx.model.PtrBytes
 	t.kind = Interface
 	t.methods = methods
@@ -1145,7 +1138,6 @@ func newMapType(ctx *context, key, elem Type) *mapType {
 		t.flgs = t.flgs | elem.flags()
 	}
 	t.align = ctx.model.PtrBytes
-	t.ctx = ctx.Context
 	t.fieldAlign = ctx.model.PtrBytes
 	t.kind = Map
 	t.size = uint64(ctx.model.PtrBytes)
@@ -1182,7 +1174,6 @@ func newPtrType(ctx *context, elem Type) *ptrType {
 		t.flgs = elem.flags()
 	}
 	t.align = ctx.model.PtrBytes
-	t.ctx = ctx.Context
 	t.fieldAlign = ctx.model.PtrBytes
 	t.kind = Ptr
 	t.size = uint64(ctx.model.PtrBytes)
@@ -1213,7 +1204,6 @@ func newSliceType(ctx *context, elem Type) *sliceType {
 		t.flgs = elem.flags()
 	}
 	t.align = ctx.model.PtrBytes
-	t.ctx = ctx.Context
 	t.fieldAlign = ctx.model.PtrBytes
 	t.kind = Slice
 	t.size = uint64(3 * ctx.model.PtrBytes)
@@ -1238,14 +1228,13 @@ type structType struct {
 	flgs flags
 }
 
-func newStructType(ctx *context, fields []StructField, methods []Method) *structType {
+func newStructType(fields []StructField, methods []Method) *structType {
 	t := &structType{fields: fields}
 	for _, v := range fields {
 		if v.Type != nil {
 			t.flgs = t.flgs | v.Type.flags()
 		}
 	}
-	t.ctx = ctx.Context
 	t.kind = Struct
 	t.methods = methods
 	t.typ = t
@@ -1341,14 +1330,13 @@ type tupleType struct {
 	flgs     flags
 }
 
-func newTupleType(ctx *context, elements []Type) *tupleType {
+func newTupleType(elements []Type) *tupleType {
 	t := &tupleType{elements: elements}
 	for _, v := range elements {
 		if v != nil {
 			t.flgs = t.flgs | v.flags()
 		}
 	}
-	t.ctx = ctx.Context
 	t.kind = Tuple
 	t.typ = t
 	t.align, t.fieldAlign, t.size = measure(t)

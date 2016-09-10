@@ -292,7 +292,7 @@ BasicLiteral:
 			break
 		}
 
-		lhs.Value = newConstValue(newFloatConst(0, f, lx.float64Type, true).normalize())
+		lhs.Value = newConstValue(newFloatConst(0, f, lx.float64Type, true).normalize(lx.ctx))
 	}
 |       IMAG_LIT
 	{
@@ -309,7 +309,7 @@ BasicLiteral:
 			break
 		}
 
-		lhs.Value = newConstValue(newComplexConst(0, &bigComplex{big.NewFloat(0).SetPrec(lx.floatConstPrec), f}, lx.float64Type, true).normalize())
+		lhs.Value = newConstValue(newComplexConst(0, &bigComplex{big.NewFloat(0).SetPrec(lx.floatConstPrec), f}, lx.float64Type, true).normalize(lx.ctx))
 	}
 |       INT_LIT
 	{
@@ -322,7 +322,7 @@ BasicLiteral:
 			break
 		}
 
-		if lhs.Value = newConstValue(newIntConst(0, i, lx.intType, true).normalize()); lhs.Value == nil {
+		if lhs.Value = newConstValue(newIntConst(0, i, lx.intType, true).normalize(lx.ctx)); lhs.Value == nil {
 			lx.err(t, "integer literal overflow %s", s)
 		}
 	}

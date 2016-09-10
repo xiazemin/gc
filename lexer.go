@@ -66,6 +66,7 @@ type lexer struct {
 	build                bool // Whether build tags, if any, satisfied.
 	closed               bool // Error limit reached.
 	constExpr            *ExpressionList
+	ctx                  *context
 	declarationScope     *Scope
 	dotImports           []*ImportDeclaration
 	fileScope            *Scope
@@ -101,11 +102,12 @@ func newLexer(nm string, sz int, r io.RuneReader, pkg *Package) (*lexer, error) 
 	lx := &lexer{
 		Context:          ctx,
 		build:            true,
+		ctx:              &context{Context: ctx},
+		declarationScope: pkg.Scope,
 		fileScope:        newScope(FileScope, pkg.Scope),
 		name:             nm,
 		pkg:              pkg,
 		resolutionScope:  pkg.Scope,
-		declarationScope: pkg.Scope,
 	}
 	lx0, err := lex.New(
 		xc.FileSet.AddFile(nm, -1, sz),

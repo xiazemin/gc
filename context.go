@@ -102,6 +102,8 @@ var (
 		"sparc64":     {8, 8},
 		"sparc":       {4, 4},
 	}
+
+	untypedBoolType Type
 )
 
 func isValidArch(s string) bool {
@@ -132,47 +134,48 @@ type contextOptions struct {
 
 // Context represents data shared by all packages loaded by LoadPackages.
 type Context struct {
-	bigIntMaxInt     *big.Int
-	bigIntMaxUint    *big.Int
-	bigIntMaxUintptr *big.Int
-	bigIntMinInt     *big.Int
-	boolType         Type
-	complex128Type   Type
-	errNode          Node
-	falseValue       *constValue
-	fileCentral      *xc.FileCentral
-	float32Type      Type
-	float64Type      Type
-	floatConstPrec   uint
-	floatMaxInt      float64
-	floatMaxUint     float64
-	floatMaxUintptr  float64
-	floatMinInt      float64
-	goarch           string
-	goos             string
-	gopaths          []string
-	goroot           string
-	int32Type        Type
-	intConstBits     uint
-	intType          Type
-	maxInt           int64
-	maxUint          uint64
-	maxUintptr       uint64
-	minInt           int64
-	model            Model
-	nilValue         *nilValue
-	options          *contextOptions
-	report           *xc.Report
-	searchPaths      []string
-	stringType       Type
-	tags             map[string]struct{}
-	test             *testContext
-	trueValue        *constValue
-	uint8Type        Type
-	uintptrType      Type
-	universe         *Scope
-	untypedBoolType  Type
-	voidType         Type
+	bigIntMaxInt        *big.Int
+	bigIntMaxUint       *big.Int
+	bigIntMaxUintptr    *big.Int
+	bigIntMinInt        *big.Int
+	boolType            Type
+	complex128Type      Type
+	errNode             Node
+	falseValue          *constValue
+	fileCentral         *xc.FileCentral
+	float32Type         Type
+	float64Type         Type
+	floatConstPrec      uint
+	floatMaxInt         float64
+	floatMaxUint        float64
+	floatMaxUintptr     float64
+	floatMinInt         float64
+	goarch              string
+	goos                string
+	gopaths             []string
+	goroot              string
+	int32Type           Type
+	intConstBits        uint
+	intType             Type
+	maxInt              int64
+	maxUint             uint64
+	maxUintptr          uint64
+	minInt              int64
+	model               Model
+	nilValue            *nilValue
+	options             *contextOptions
+	report              *xc.Report
+	searchPaths         []string
+	stringType          Type
+	tags                map[string]struct{}
+	test                *testContext
+	trueValue           *constValue
+	uint8Type           Type
+	uintptrType         Type
+	universe            *Scope
+	untypedBoolType     Type
+	untypedBoolTypeOnce sync.Once
+	voidType            Type
 }
 
 // NewContext returns a newly created Context.
@@ -294,7 +297,6 @@ func (c *Context) declareBuiltins() error {
 	} {
 		t := xc.Token{Val: v.name}
 		d := newTypeDeclaration(nil, t, nil)
-		d.ctx = c
 		base := d.base()
 		base.align = v.align
 		base.fieldAlign = v.fieldAlign
@@ -309,11 +311,14 @@ func (c *Context) declareBuiltins() error {
 		}
 	}
 
+	c.untypedBoolTypeOnce.Do(func() {
+		untypedBoolType = c.untypedBoolType
+	})
 	b := c.universe.Bindings
 	b[idByte] = b[idUint8]
 	b[idRune] = b[idInt32]
 
-	c.voidType = newTupleType(&context{Context: c}, nil)
+	c.voidType = newTupleType(nil)
 
 	p := c.newPackage("", "")
 	p.Scope = c.universe
@@ -579,14 +584,14 @@ func (c *Context) untypedArithmeticBinOpType(a, b Type) Type {
 	}
 }
 
-func (c *Context) valueAssignmentFail(n Node, t Type, v Value) bool {
+func (c *context) valueAssignmentFail(n Node, t Type, v Value) bool {
 	switch v.Kind() {
 	case ConstValue:
 		return c.constAssignmentFail(n, t, v.Const())
 	default:
 		switch {
 		case t.Kind() == Interface:
-			return v.Type().implementsFailed(t.context(), n, "cannot use type %s as type %s in assignment:", t)
+			return v.Type().implementsFailed(c, n, "cannot use type %s as type %s in assignment:", t)
 		default:
 			return c.err(n, "cannot use type %s as type %s in assignment", v.Type(), t)
 		}
@@ -620,18 +625,18 @@ func (c *Context) constConversionFail(n Node, t Type, d Const) bool {
 	}
 }
 
-func (c *Context) arithmeticBinOpShape(a, b Const, n Node) (Type, bool /* untyped*/, Const, Const) {
+func (c *context) arithmeticBinOpShape(a, b Const, n Node) (Type, bool /* untyped*/, Const, Const) {
 	switch {
 	case a.Untyped():
 		switch {
 		case b.Untyped():
 			t := c.untypedArithmeticBinOpType(a.Type(), b.Type())
-			d := a.convert(t)
+			d := a.convert(c, t)
 			if d == nil {
 				c.constConversionFail(n, t, a)
 			}
 
-			e := b.convert(t)
+			e := b.convert(c, t)
 			if e == nil {
 				c.constConversionFail(n, t, b)
 			}
@@ -641,14 +646,14 @@ func (c *Context) arithmeticBinOpShape(a, b Const, n Node) (Type, bool /* untype
 			}
 		default: // a.Untyped && !b.Untyped
 			t := b.Type()
-			if d := a.mustConvert(n, t); d != nil {
-				return t, false, d, b.convert(t)
+			if d := a.mustConvert(c, n, t); d != nil {
+				return t, false, d, b.convert(c, t)
 			}
 		}
 	case b.Untyped(): // !a.Untyped() && b.Untyped()
 		t := a.Type()
-		if d := b.mustConvert(n, t); d != nil {
-			return t, false, a.convert(t), d
+		if d := b.mustConvert(c, n, t); d != nil {
+			return t, false, a.convert(c, t), d
 		}
 	default: // !a.Untyped() && !b.Untyped()
 		t := a.Type()
@@ -657,12 +662,12 @@ func (c *Context) arithmeticBinOpShape(a, b Const, n Node) (Type, bool /* untype
 			break
 		}
 
-		d := a.convert(t)
+		d := a.convert(c, t)
 		if d == nil {
 			c.constConversionFail(n, t, a)
 		}
 
-		e := b.convert(t)
+		e := b.convert(c, t)
 		if e == nil {
 			c.constConversionFail(n, t, b)
 		}
@@ -674,8 +679,8 @@ func (c *Context) arithmeticBinOpShape(a, b Const, n Node) (Type, bool /* untype
 	return nil, false, nil, nil
 }
 
-func (c *Context) mustConvertConst(n Node, t Type, d Const) Const {
-	e := d.normalize()
+func (c *context) mustConvertConst(n Node, t Type, d Const) Const {
+	e := d.normalize(c)
 	if e == nil {
 		todo(n, true)
 		//TODO c.err(n, "constant %s overflows %s", d, d.Type())
@@ -686,7 +691,7 @@ func (c *Context) mustConvertConst(n Node, t Type, d Const) Const {
 		return e
 	}
 
-	if f := e.Convert(t); f != nil {
+	if f := e.Convert(c.Context, t); f != nil {
 		if f.Kind() == ConstValue {
 			return f.Const()
 		}
@@ -706,7 +711,7 @@ func (c *Context) compositeLiteralValueFail(n Node, v Value, t Type) bool {
 }
 
 func (c *Context) mustAssignNil(n Node, t Type) (stop bool) {
-	if !c.nilValue.AssignableTo(t) {
+	if !c.nilValue.AssignableTo(c, t) {
 		return c.err(n, "cannot use nil as type %s in assignment", t)
 	}
 
@@ -714,7 +719,7 @@ func (c *Context) mustAssignNil(n Node, t Type) (stop bool) {
 }
 
 func (c *Context) mustConvertNil(n Node, t Type) (stop bool) {
-	if !c.nilValue.AssignableTo(t) {
+	if !c.nilValue.AssignableTo(c, t) {
 		return c.err(n, "cannot convert nil to type %s", t)
 	}
 
@@ -777,7 +782,7 @@ func (c *Context) booleanBinOpShape(a, b Type, n Node) Type {
 	return nil
 }
 
-func (c *Context) constStringBinOpShape(a, b Const, n Node) (Type, bool /* untyped*/, Const, Const) {
+func (c *context) constStringBinOpShape(a, b Const, n Node) (Type, bool /* untyped*/, Const, Const) {
 	if a.Kind() != StringConst {
 		return nil, false, nil, nil
 	}
@@ -792,10 +797,10 @@ func (c *Context) constStringBinOpShape(a, b Const, n Node) (Type, bool /* untyp
 		case b.Untyped():
 			return c.stringType, true, a, b
 		default: // a.Untyped && !b.Untyped
-			return b.Type(), false, a.mustConvert(n, b.Type()), b // Cannot fail.
+			return b.Type(), false, a.mustConvert(c, n, b.Type()), b // Cannot fail.
 		}
 	case b.Untyped(): // !a.Untyped() && b.Untyped()
-		return a.Type(), false, a, b.mustConvert(n, a.Type()) // Cannot fail.
+		return a.Type(), false, a, b.mustConvert(c, n, a.Type()) // Cannot fail.
 	default: // !a.Untyped() && !b.Untyped()
 		if !a.Type().Identical(b.Type()) {
 			todo(n, true) // type mismatch
@@ -812,7 +817,7 @@ func (c *Context) stringBinOpShape(a, b Value, n Node) Type {
 		panic("internal error")
 	}
 
-	if !a.AssignableTo(b.Type()) && !b.AssignableTo(a.Type()) {
+	if !a.AssignableTo(c, b.Type()) && !b.AssignableTo(c, a.Type()) {
 		return nil
 	}
 

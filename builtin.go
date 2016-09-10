@@ -36,7 +36,7 @@ func builtinAppend(ctx *context, call *Call) Value {
 				continue
 			}
 
-			if !v.AssignableTo(et) {
+			if !v.AssignableTo(ctx.Context, et) {
 				todo(call, true) // type mismatch
 			}
 		}
@@ -115,7 +115,7 @@ func builtinComplex(ctx *context, call *Call) Value {
 		case RuntimeValue:
 			todo(call)
 		case ConstValue:
-			if constRe = re.Const().mustConvert(call.ArgumentList.Argument, ctx.float64Type); constRe == nil {
+			if constRe = re.Const().mustConvert(ctx, call.ArgumentList.Argument, ctx.float64Type); constRe == nil {
 				return nil
 			}
 		default:
@@ -128,7 +128,7 @@ func builtinComplex(ctx *context, call *Call) Value {
 		case RuntimeValue:
 			todo(call)
 		case ConstValue:
-			if constIm = im.Const().mustConvert(call.ArgumentList.Argument, ctx.float64Type); constIm == nil {
+			if constIm = im.Const().mustConvert(ctx, call.ArgumentList.Argument, ctx.float64Type); constIm == nil {
 				return nil
 			}
 		default:
@@ -258,14 +258,14 @@ func builtinMake(ctx *context, call *Call) Value {
 			continue
 		}
 
-		if !v.nonNegativeInteger() {
+		if !v.nonNegativeInteger(ctx) {
 			todo(call, true)
 			return nil
 		}
 
 		switch v.Kind() {
 		case ConstValue:
-			c := v.Const().Convert(ctx.intType)
+			c := v.Const().Convert(ctx.Context, ctx.intType)
 			if c == nil {
 				todo(call, true) //TODO ctx.constConversionFail(call.ArgumentList.node(i), ctx.intType, v.Const())
 				return nil
