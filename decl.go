@@ -1443,22 +1443,26 @@ type context struct {
 
 func (c *context) pop() { c.stack = c.stack[:len(c.stack)-1] }
 
-func (c *context) setLoopErrNode(n Node) *context {
-	if c.loopErrNode != nil {
-		return c
-	}
-
+func (c *context) setErrNode(n Node) *context {
 	d := *c
-	d.loopErrNode = n
+	if d.errNode == nil {
+		d.errNode = n
+	}
+	return &d
+}
+
+func (c *context) setLoopErrNode(n Node) *context {
+	d := *c
+	if d.loopErrNode == nil {
+		d.loopErrNode = n
+	}
 	return &d
 }
 
 func (c *context) setErrf(f func(*gate) bool) *context {
-	if c.errf != nil {
-		return c
-	}
-
 	d := *c
-	d.errf = f
+	if d.errf == nil {
+		d.errf = f
+	}
 	return &d
 }
