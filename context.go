@@ -382,12 +382,22 @@ func (c *Context) clearErrors() {
 }
 
 // DirectoryFromImportPath returns the directory where the source files of
-// package importPath are to be searched for.
+// package importPath are to be searched for.  Optional vendor paths are
+// examined before any context's search paths.
 func (c *Context) DirectoryFromImportPath(importPath string) (string, error) {
 	for _, v := range c.searchPaths {
-		dir := filepath.Join(v, importPath)
+		dir := filepath.Join(v, "vendor", importPath)
 		fi, err := os.Stat(dir)
-		if err != nil {
+		if err == nil && fi.IsDir() {
+			return dir, nil
+		}
+
+		if err != nil && !os.IsNotExist(err) {
+			return "", err
+		}
+
+		dir = filepath.Join(v, importPath)
+		if fi, err = os.Stat(dir); err != nil {
 			if !os.IsNotExist(err) {
 				return "", err
 			}
@@ -418,7 +428,8 @@ func (c *Context) DirectoryFromImportPath(importPath string) (string, error) {
 
 // FilesFromImportPath returns the directory where the source files for package
 // importPath are; a list of normal and testing (*_test.go) go source files or
-// an error, if any.
+// an error, if any. Optional vendor paths are examined before any context's
+// search paths.
 func (c *Context) FilesFromImportPath(importPath string) (dir string, sourceFiles []string, testFiles []string, err error) {
 	if t := c.test; t != nil {
 		if sf, ok := t.pkgMap[importPath]; ok {
