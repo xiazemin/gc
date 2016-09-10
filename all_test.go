@@ -525,14 +525,11 @@ func TestTmp(t *testing.T) {
 	if err := p.loadString("", `
 package foo
 
-type floatEncoder int // number of bits
+type t int
 
-func (bits floatEncoder) encode() {
-}
+func (t) m(int) {}
+func (*t) p(*int) {}
 
-var (
-	float32Encoder = (floatEncoder(32)).encode
-)
 `,
 	); err != nil {
 		t.Fatal(errStr(err))

@@ -848,6 +848,9 @@ func (*CompLitValue) check(ctx *context, n CompositeLiteralValue, t Type) (stop 
 				case hasKey:
 					keyed = true
 					if v != nil && field.Type != nil && !v.AssignableTo(ctx.Context, field.Type) {
+						//dbg("==== %s", position(val.Pos()))
+						//dbg("", v.Type())
+						//dbg("", field.Type)
 						todo(val, true)
 					}
 				default:
@@ -2237,16 +2240,16 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 				break
 			}
 
-			synth := false
+			needPtrRx := false
 			m := t.MethodByName(nm.Val)
 			if m == nil && t.Kind() == Ptr {
 				if e := t.Elem(); e != nil && e.Kind() != Interface {
-					synth = true
+					needPtrRx = true
 					m = e.MethodByName(nm.Val)
 				}
 			}
 			if m == nil {
-				if synth {
+				if needPtrRx {
 					t = newPtrType(ctx, t)
 				}
 				switch {
@@ -2271,9 +2274,12 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 			mt := m.Type
 			if mt != nil {
 				n.flags = n.flags | mt.flags()
-			}
-			if synth {
-				mt = mt.(*funcType).ptrMethod(ctx)
+				if needPtrRx {
+					rxt := mt.In(0)
+					if rxt != nil && rxt.Kind() != Ptr {
+						mt = mt.(*funcType).ptrMethod(ctx)
+					}
+				}
 			}
 			n.Value = newRuntimeValue(mt)
 		default:

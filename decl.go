@@ -574,7 +574,11 @@ func (n *FuncDeclaration) check(ctx *context) (stop bool) {
 
 	var in []Type
 	if n.rx != nil {
-		in = append(in, n.rx.Type)
+		t := n.rx.Type
+		if n.rx.isPtr {
+			t = newPtrType(ctx, t)
+		}
+		in = []Type{t}
 	}
 	isVariadic := false
 	for l := n.sig.Parameters.ParameterDeclList; l != nil; l = l.ParameterDeclList {
