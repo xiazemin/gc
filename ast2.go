@@ -899,7 +899,12 @@ func (n *ConstSpec) decl(lx *lexer, t *Typ, el *ExpressionList) {
 		lx.iota++
 	}()
 
-	if el != nil && lx.firstConstSpec {
+	if el == nil && t != nil {
+		todo(n, true) // invalid
+		return
+	}
+
+	if el != nil {
 		lx.constExpr = el
 		lx.constType = t
 	}
@@ -908,10 +913,8 @@ func (n *ConstSpec) decl(lx *lexer, t *Typ, el *ExpressionList) {
 	if el0 == nil {
 		shared = true
 		el0 = lx.constExpr
+		t = lx.constType
 	}
-	//TODO if t == nil {
-	//TODO 	t = lx.constType
-	//TODO }
 	if el0 == nil && lx.firstConstSpec {
 		lx.err(n, "constant declaration must have expression")
 		return
