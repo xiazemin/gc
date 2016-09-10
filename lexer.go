@@ -481,11 +481,9 @@ again:
 		lx.firstConstSpec = true
 		lx.iota = 0
 	case FUNC:
-		//TODO- rs := lx.resolutionScope
 		s := lx.pushScope()
 		s.isFnScope = true
 		s.isMergeScope = true
-		//TODO- lx.resolutionScope = rs
 	case IF, FOR, SWITCH: // Implicit blocks.
 		lx.pushScope()
 	case CASE, DEFAULT: // Implicit blocks.

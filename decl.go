@@ -293,6 +293,7 @@ func (s *Scope) mustLookupType(ctx *context, qi *QualifiedIdent, fileScope *Scop
 	d := s.mustLookupQI(ctx, qi, fileScope)
 	t, ok := d.(*TypeDeclaration)
 	if d != nil && !ok {
+		//dbg("%s: %s: %T", position(qi.Pos()), position(d.Pos()), d)
 		ctx.err(qi, "%s is not a type", qi.str())
 	}
 	return t
@@ -317,7 +318,7 @@ func (s *Scope) check(ctx *context) (stop bool) {
 				continue
 			}
 
-			_ = x //TODO
+			_ = x //TODO check function's block
 		}
 	}
 	return false
