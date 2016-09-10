@@ -371,16 +371,12 @@ func (n *ConstDeclaration) check(ctx *context) (stop bool) {
 		return false
 	}
 
-	errNode := ctx.errNode
-	ctx.errNode = n
-	ctx2 := *ctx
+	ctx2 := ctx.setErrNode(n)
 	ctx2.iota = newConstValue(newIntConst(n.iota, nil, ctx.intType, true))
-	if n.expr.check(&ctx2) {
-		ctx.errNode = errNode
+	if n.expr.check(ctx2) {
 		return true
 	}
 
-	ctx.errNode = errNode
 	if typ0 := n.typ0; typ0 != nil {
 		if typ0.check(ctx) {
 			return true
