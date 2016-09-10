@@ -1413,6 +1413,8 @@ func (g *gate) check(ctx *context, d Declaration, t Type) (done, stop bool) {
 				for j, v := range stack[i : len(stack)-1] {
 					a = append(a, fmt.Sprintf("\t%s: %s uses %s", position(v.Pos()), dict.S(v.Name()), dict.S(stack[i+j+1].Name())))
 				}
+				ctx := *ctx
+				ctx.errNode = nil
 				return true, ctx.err(node, "%s\n%s", prolog, strings.Join(a, "\n"))
 			}
 		}
@@ -1436,7 +1438,6 @@ type context struct {
 	iota        Value
 	loopErrNode Node
 	pkg         *Package
-	rrrNode     Node
 	stack       []Declaration
 }
 
