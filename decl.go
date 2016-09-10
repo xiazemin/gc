@@ -764,7 +764,7 @@ func (n *TypeDeclaration) check(ctx *context) (stop bool) {
 	defer n.guard.done(ctx)
 
 	if t0 := n.typ0; t0 != nil && t0.Case == 9 { // StructType
-		ctx = ctx.setNode(t0.StructType.Token2)
+		ctx = ctx.setLoopErrNode(t0.StructType.Token2)
 	}
 
 	var a declarations
@@ -1388,8 +1388,8 @@ func (g *gate) check(ctx *context, d Declaration, t Type) (done, stop bool) {
 
 		var node Node
 		switch {
-		case ctx.node != nil:
-			node = ctx.node
+		case ctx.loopErrNode != nil:
+			node = ctx.loopErrNode
 		default:
 			*g = gateClosed
 			node = d
@@ -1434,22 +1434,23 @@ func (g *gate) done(c *context) {
 
 type context struct {
 	*Context
-	stack []Declaration
-	node  Node
-	iota  Value
-	errf  func(*gate) bool
-	pkg   *Package
+	errf        func(*gate) bool
+	iota        Value
+	loopErrNode Node
+	pkg         *Package
+	rrrNode     Node
+	stack       []Declaration
 }
 
 func (c *context) pop() { c.stack = c.stack[:len(c.stack)-1] }
 
-func (c *context) setNode(n Node) *context {
-	if c.node != nil {
+func (c *context) setLoopErrNode(n Node) *context {
+	if c.loopErrNode != nil {
 		return c
 	}
 
 	d := *c
-	d.node = n
+	d.loopErrNode = n
 	return &d
 }
 
@@ -1464,8 +1465,8 @@ func (c *context) setErrf(f func(*gate) bool) *context {
 }
 
 func (c *context) mustConvertConst(n Node, t Type, d Const) Const {
-	if c.node != nil {
-		n = c.node
+	if c.loopErrNode != nil {
+		n = c.loopErrNode
 	}
 
 	return c.Context.mustConvertConst(n, t, d)
