@@ -622,9 +622,8 @@ InterfaceType:
 	"interface" LBrace '}'
 |       "interface" LBrace
 	{
-		s := lx.resolutionScope
 		lx.pushScope()
-		lx.resolutionScope = s
+		lx.declarationScope.skip = true
 	}
 	InterfaceMethodDeclList SemicolonOpt '}'
 	{
@@ -952,7 +951,7 @@ StructType:
 |       "struct" LBrace
 	{
 		lx.pushScope()
-		lx.resolutionScope = lx.declarationScope.Parent
+		lx.declarationScope.skip = true
 	}
 	StructFieldDeclList SemicolonOpt '}'
 	{

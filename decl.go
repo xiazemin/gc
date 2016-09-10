@@ -132,6 +132,7 @@ type Scope struct {
 	fnType       *Type
 	isFnScope    bool
 	isMergeScope bool
+	skip         bool
 }
 
 func newScope(kind ScopeKind, parent *Scope) *Scope {
@@ -213,16 +214,18 @@ func (s *Scope) lookup(t xc.Token, fileScope *Scope) (d Declaration) {
 func (s *Scope) lookup2(t xc.Token, fileScope *Scope) (d Declaration, _ *Scope) {
 	s0 := s
 	for s != nil {
-		switch d = s.Bindings[t.Val]; {
-		case d == nil:
-			if s.Kind == PackageScope {
-				if d = fileScope.Bindings[t.Val]; d != nil {
+		if !s.skip {
+			switch d = s.Bindings[t.Val]; {
+			case d == nil:
+				if s.Kind == PackageScope {
+					if d = fileScope.Bindings[t.Val]; d != nil {
+						return d, s
+					}
+				}
+			default:
+				if s.Kind != BlockScope || s0 != s || d.ScopeStart() < t.Pos() {
 					return d, s
 				}
-			}
-		default:
-			if s.Kind != BlockScope || s0 != s || d.ScopeStart() < t.Pos() {
-				return d, s
 			}
 		}
 		s = s.Parent
@@ -239,13 +242,15 @@ func (s *Scope) mustLookup(ctx *context, t xc.Token, fileScope *Scope) (d Declar
 
 func (s *Scope) mustLookupLabel(ctx *context, t xc.Token) {
 	for {
-		if d := s.Labels[t.Val]; d != nil {
-			return
-		}
+		if !s.skip {
+			if d := s.Labels[t.Val]; d != nil {
+				return
+			}
 
-		if s.isFnScope {
-			todo(t, true) // undefined
-			return
+			if s.isFnScope {
+				todo(t, true) // undefined
+				return
+			}
 		}
 
 		s = s.Parent
