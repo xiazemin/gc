@@ -344,7 +344,7 @@ func (c *Context) newPackage(importPath, directory string) *Package {
 	return newPackage(c, importPath, directory)
 }
 
-func (c *Context) err(n Node, format string, arg ...interface{}) bool {
+func (c *context) err(n Node, format string, arg ...interface{}) bool {
 	if n == nil {
 		panic("internal error")
 	}
@@ -594,7 +594,7 @@ func (c *context) valueAssignmentFail(n Node, t Type, v Value) bool {
 	}
 }
 
-func (c *Context) constAssignmentFail(n Node, t Type, d Const) bool {
+func (c *context) constAssignmentFail(n Node, t Type, d Const) bool {
 	if d.Untyped() && d.Type().ConvertibleTo(t) &&
 		!(d.Type().Kind() == String && t.Kind() == Slice && (t.Elem().Kind() == Uint8 || t.Elem().Kind() == Int32)) &&
 		!(d.Integral() && t.Kind() == String) {
@@ -604,7 +604,7 @@ func (c *Context) constAssignmentFail(n Node, t Type, d Const) bool {
 	return c.err(n, "cannot use %s (type %s) as type %s in assignment", d, d.Type(), t)
 }
 
-func (c *Context) constConversionFail(n Node, t Type, d Const) bool {
+func (c *context) constConversionFail(n Node, t Type, d Const) bool {
 	fpOverflow := d.Type().FloatingPointType() && t.ComplexType()
 	switch {
 	case t.Kind() == Interface && d.Type().Implements(t):
@@ -697,7 +697,7 @@ func (c *context) mustConvertConst(n Node, t Type, d Const) Const {
 	return nil
 }
 
-func (c *Context) compositeLiteralValueFail(n Node, v Value, t Type) bool {
+func (c *context) compositeLiteralValueFail(n Node, v Value, t Type) bool {
 	switch v.Kind() {
 	case ConstValue:
 		return c.err(n, "cannot use %s (type %s) as type %s in array or slice literal", v.Const(), v.Type(), t)
@@ -706,16 +706,16 @@ func (c *Context) compositeLiteralValueFail(n Node, v Value, t Type) bool {
 	}
 }
 
-func (c *Context) mustAssignNil(n Node, t Type) (stop bool) {
-	if !c.nilValue.AssignableTo(c, t) {
+func (c *context) mustAssignNil(n Node, t Type) (stop bool) {
+	if !c.nilValue.AssignableTo(c.Context, t) {
 		return c.err(n, "cannot use nil as type %s in assignment", t)
 	}
 
 	return false
 }
 
-func (c *Context) mustConvertNil(n Node, t Type) (stop bool) {
-	if !c.nilValue.AssignableTo(c, t) {
+func (c *context) mustConvertNil(n Node, t Type) (stop bool) {
+	if !c.nilValue.AssignableTo(c.Context, t) {
 		return c.err(n, "cannot convert nil to type %s", t)
 	}
 
