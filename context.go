@@ -345,6 +345,9 @@ func (c *Context) newPackage(importPath, directory string) *Package {
 }
 
 func (c *context) err(n Node, format string, arg ...interface{}) bool {
+	if c.errNode != nil {
+		n = c.errNode
+	}
 	if n == nil {
 		panic("internal error")
 	}
