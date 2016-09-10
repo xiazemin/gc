@@ -856,7 +856,10 @@ func (n *TypeDeclaration) check(ctx *context) (stop bool) {
 	}
 
 	u := t.UnderlyingType()
-	if u.NumMethod() == 0 || t.Kind() == Ptr {
+	if u.Kind() == Ptr {
+		u = u.Elem()
+	}
+	if u.NumMethod() == 0 || u.Kind() == Ptr {
 		return false
 	}
 
