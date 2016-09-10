@@ -1367,14 +1367,15 @@ func (g *gate) check(ctx *context, d Declaration, t Type) (done, stop bool) {
 			return true, false
 		}
 
-		d = stack[len(stack)-1]
-		var a []Declaration
-		for _, v := range stack[:len(stack)-1] {
-			if v == d {
-				a = append(a, v) //TODO no need to collect all instances.
+		loop := false
+		for i := len(stack) - 2; i >= 0; i-- {
+			if stack[i] == d {
+				loop = true
+				stack = stack[i:]
+				break
 			}
 		}
-		if len(a) == 0 {
+		if !loop {
 			return true, false
 		}
 
