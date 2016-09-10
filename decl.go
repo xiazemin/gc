@@ -1432,6 +1432,7 @@ func (g *gate) done(c *context) {
 
 type context struct {
 	*Context
+	errNode     Node
 	errf        func(*gate) bool
 	iota        Value
 	loopErrNode Node
