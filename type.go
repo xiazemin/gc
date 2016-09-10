@@ -645,7 +645,7 @@ func (t *typeBase) implementsFailed(ctx *context, n Node, msg string, u Type) (s
 
 	s := fmt.Sprintf(msg, t, u)
 
-	if t.Kind() == Ptr && t.Elem().isNamed() {
+	if t.Kind() == Ptr {
 		t = t.Elem().base()
 	}
 
@@ -706,7 +706,7 @@ func (t *typeBase) Implements(u Type) bool {
 		panic("non-interface argument passed to Implements")
 	}
 
-	if t.Kind() == Ptr && t.Elem().isNamed() {
+	if t.Kind() == Ptr {
 		t = t.Elem().base()
 	}
 
