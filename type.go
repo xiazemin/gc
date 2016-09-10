@@ -645,11 +645,7 @@ func (t *typeBase) implementsFailed(ctx *context, n Node, msg string, u Type) (s
 
 	s := fmt.Sprintf(msg, t, u)
 
-	var checkNonPtrRx bool
-	switch {
-	case t.isNamed() && t.Kind() != Interface:
-		checkNonPtrRx = true
-	case t.Kind() == Ptr && t.Elem().isNamed():
+	if t.Kind() == Ptr && t.Elem().isNamed() {
 		t = t.Elem().base()
 	}
 
@@ -667,11 +663,6 @@ func (t *typeBase) implementsFailed(ctx *context, n Node, msg string, u Type) (s
 		mt := t.MethodByName(mu.Name)
 		if mt == nil || mt.PkgPath != mu.PkgPath {
 			return ctx.err(n, "%s\n\t%s does not implement %s (missing %s method)", s, t, u, dict.S(mu.Name))
-		}
-
-		if checkNonPtrRx && mt.Type.In(0).Kind() == Ptr {
-			todo(n, true)
-			return false
 		}
 
 		tt := mt.Type
@@ -715,11 +706,7 @@ func (t *typeBase) Implements(u Type) bool {
 		panic("non-interface argument passed to Implements")
 	}
 
-	var checkNonPtrRx bool
-	switch {
-	case t.isNamed() && t.Kind() != Interface:
-		checkNonPtrRx = true
-	case t.Kind() == Ptr && t.Elem().isNamed():
+	if t.Kind() == Ptr && t.Elem().isNamed() {
 		t = t.Elem().base()
 	}
 
@@ -741,10 +728,6 @@ func (t *typeBase) Implements(u Type) bool {
 		mu := u.Method(i)
 		mt := t.MethodByName(mu.Name)
 		if mt == nil || mt.PkgPath != mu.PkgPath {
-			return false
-		}
-
-		if checkNonPtrRx && mt.Type.In(0).Kind() == Ptr {
 			return false
 		}
 

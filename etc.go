@@ -159,9 +159,9 @@ func todo(n Node, opt ...bool) { //TODO-
 
 	if len(opt) != 0 && todoTrace {
 		p := position(n.Pos()).String()
-		if !strings.HasPrefix(p, "testdata") {
-			return
-		}
+		//if !strings.HasPrefix(p, "testdata") {
+		//	return
+		//}
 
 		_, fn, fl, _ := runtime.Caller(1)
 		fmt.Fprintf(os.Stderr, "trace %s:%d: ", filepath.Base(fn), fl)
