@@ -2228,7 +2228,11 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 			val := path[len(path)-1]
 			vt := val.typ()
 			if m, ok := val.(*Method); ok && t.Kind() != Interface {
-				m = t.MethodByName(m.Name)
+				t2 := t
+				if t.Kind() == Ptr {
+					t2 = t2.Elem()
+				}
+				m = t2.MethodByName(m.Name)
 				if m != nil { // Method value.
 					f0 := m.Type.(*funcType)
 					f := *f0

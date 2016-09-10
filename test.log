@@ -1745,8 +1745,7 @@
 [FAIL errorcheck: missing error] "cannot take address" testdata/method.go:22:17
 [FAIL errorcheck: error does not match] "cannot take address": cannot use type *func() as type func(foo.t) in assignment testdata/method.go:24:14
 [FAIL errorcheck: error does not match] "cannot take address": cannot use type *func() as type func() in assignment testdata/method.go:25:14
-[FAIL errorcheck: missing error] "TODO" testdata/method.go:27:23
-[FAIL errorcheck: extra error] cannot use type func(foo.t) as type func() in assignment testdata/method.go:28:14
+[FAIL errorcheck: error does not match] "TODO": cannot use type func() as type func(foo.t) in assignment testdata/method.go:27:14
 [PASS errorcheck] "cannot use 42 \(type int\) as type string in assignment": cannot use 42 (type int) as type string in assignment testdata/method.go:30:13
 [PASS errorcheck] "import statement not a string": import statement not a string testdata/more.go:9:8
 [PASS errorcheck] "func init must have no arguments and no return values": func init must have no arguments and no return values testdata/more.go:11:11
