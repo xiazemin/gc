@@ -848,9 +848,6 @@ func (*CompLitValue) check(ctx *context, n CompositeLiteralValue, t Type) (stop 
 				case hasKey:
 					keyed = true
 					if v != nil && field.Type != nil && !v.AssignableTo(ctx.Context, field.Type) {
-						//dbg("==== %s", position(val.Pos()))
-						//dbg("", v.Type())
-						//dbg("", field.Type)
 						todo(val, true)
 					}
 				default:
@@ -2228,7 +2225,19 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 			if root == nil {
 				root = v
 			}
-			n.Value = newSelectorValue(path[len(path)-1].typ(), root, append(rv.path0, path[len(path)-1]), append(rv.path, path...))
+			val := path[len(path)-1]
+			vt := val.typ()
+			if m, ok := val.(*Method); ok && t.Kind() != Interface {
+				m = t.MethodByName(m.Name)
+				if m != nil { // Method value.
+					f0 := m.Type.(*funcType)
+					f := *f0
+					f.in = f0.in[1:]
+					vt = &f
+					f.typeBase.typ = vt
+				}
+			}
+			n.Value = newSelectorValue(vt, root, append(rv.path0, path[len(path)-1]), append(rv.path, path...))
 			if n.Value != nil && n.Value.Type() != nil {
 				n.flags = n.flags | n.Value.Type().flags()
 			}
@@ -2271,6 +2280,7 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 				break
 			}
 
+			// Method expression.
 			mt := m.Type
 			if mt != nil {
 				n.flags = n.flags | mt.flags()

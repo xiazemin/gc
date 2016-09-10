@@ -525,10 +525,32 @@ func TestTmp(t *testing.T) {
 	if err := p.loadString("", `
 package foo
 
-type t int
+type t int // 4
 
-func (t) m(int) {}
-func (*t) p(*int) {}
+func (t) m(int) int {} // 6
+func (*t) p(*int) int {} // 7
+
+var (
+	_ = t.m // 10
+	_ = t.m(42)
+	_ = (*t).m
+	_ = (*t).m(42)
+
+	v t // 15
+
+	_ = v.m // 17
+	_ = v.m(42)
+	_ = (*v).m
+	_ = (*v).m(42)
+
+	w *t // 22
+
+	_ = w.m // 24
+	_ = w.m(42)
+	_ = (*w).m
+	_ = (*w).m(42)
+)
+
 
 `,
 	); err != nil {
