@@ -336,10 +336,11 @@ type ConstDeclaration struct {
 	name       int
 	pos        token.Pos
 	scopeStart token.Pos
+	sharedExpr bool
 	typ0       *Typ
 }
 
-func newConstDeclaration(nm xc.Token, typ0 *Typ, expr *Expression, iota int64, scopeStart token.Pos) *ConstDeclaration {
+func newConstDeclaration(nm xc.Token, typ0 *Typ, expr *Expression, iota int64, scopeStart token.Pos, shared bool) *ConstDeclaration {
 	return &ConstDeclaration{
 		expr:       expr,
 		iota:       iota,
@@ -347,6 +348,7 @@ func newConstDeclaration(nm xc.Token, typ0 *Typ, expr *Expression, iota int64, s
 		name:       nm.Val,
 		pos:        nm.Pos(),
 		scopeStart: scopeStart,
+		sharedExpr: shared,
 		typ0:       typ0,
 	}
 }

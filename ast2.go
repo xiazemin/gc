@@ -903,7 +903,9 @@ func (n *ConstSpec) decl(lx *lexer, t *Typ, el *ExpressionList) {
 		lx.constExpr = el
 	}
 	el0 := el
+	shared := false
 	if el0 == nil {
+		shared = true
 		el0 = lx.constExpr
 	}
 	if el0 == nil && lx.firstConstSpec {
@@ -925,7 +927,7 @@ loop:
 			lx.err(el, "not enough expression(s) in list")
 			break loop
 		}
-		d := newConstDeclaration(l.ident(), t, e, lx.iota, scopeStart)
+		d := newConstDeclaration(l.ident(), t, e, lx.iota, scopeStart, shared)
 		lx.declarationScope.declare(lx, d)
 	}
 	if el0 != nil {
