@@ -2712,7 +2712,7 @@ func (n *QualifiedIdent) str() string {
 func (n *QualifiedIdent) checkTypeDeclaration(ctx *context, t *TypeDeclaration) (stop bool) {
 	if n.Case == 0 /* IDENTIFIER */ && ctx.isPredeclared(t) && ctx.pkg.ImportPath != "" {
 		if t.Kind() == Invalid {
-			dbg("", position(n.Pos()), ctx.pkg.ImportPath)
+			//dbg("", position(n.Pos()), ctx.pkg.ImportPath)
 			panic("internal error")
 		}
 

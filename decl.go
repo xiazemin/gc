@@ -1123,6 +1123,9 @@ func (n *TypeDeclaration) Name() int { return n.name }
 func (n *TypeDeclaration) ScopeStart() token.Pos { return n.pos }
 
 func (n *TypeDeclaration) declare(lx *lexer, d Declaration) {
+	if n.ctx != nil {
+		n.boot()
+	}
 	if n.methods == nil {
 		n.methods = newScope(BlockScope, nil)
 	}
@@ -1142,6 +1145,9 @@ func (n *TypeDeclaration) declare(lx *lexer, d Declaration) {
 
 // ChanDir implements Type.
 func (n *TypeDeclaration) ChanDir() ChanDir {
+	if n.ctx != nil {
+		n.boot()
+	}
 	if n.typ == nil {
 		panic("ChanDir of an inappropriate type")
 	}
@@ -1151,6 +1157,9 @@ func (n *TypeDeclaration) ChanDir() ChanDir {
 
 // Elem implements Type.
 func (n *TypeDeclaration) Elem() Type {
+	if n.ctx != nil {
+		n.boot()
+	}
 	if n.typ == nil {
 		panic("Elem of an inappropriate type")
 	}
@@ -1160,6 +1169,9 @@ func (n *TypeDeclaration) Elem() Type {
 
 // Elements implement Type.
 func (n *TypeDeclaration) Elements() []Type {
+	if n.ctx != nil {
+		n.boot()
+	}
 	if n.typ == nil {
 		panic("Elements of an inappropriate type")
 	}
@@ -1169,6 +1181,9 @@ func (n *TypeDeclaration) Elements() []Type {
 
 // Field implements Type.
 func (n *TypeDeclaration) Field(i int) *StructField {
+	if n.ctx != nil {
+		n.boot()
+	}
 	if n.typ == nil {
 		panic("Field of an inappropriate type")
 	}
@@ -1178,6 +1193,9 @@ func (n *TypeDeclaration) Field(i int) *StructField {
 
 // FieldByIndex implements Type.
 func (n *TypeDeclaration) FieldByIndex(index []int) StructField {
+	if n.ctx != nil {
+		n.boot()
+	}
 	if n.typ == nil {
 		panic("FieldByIndex of an inappropriate type")
 	}
@@ -1188,6 +1206,9 @@ func (n *TypeDeclaration) FieldByIndex(index []int) StructField {
 // FieldByName implements Type.
 // field was not found. The result pointee is read only.
 func (n *TypeDeclaration) FieldByName(name int) *StructField {
+	if n.ctx != nil {
+		n.boot()
+	}
 	if n.typ == nil {
 		panic("FieldByName of an inappropriate type")
 	}
@@ -1197,6 +1218,9 @@ func (n *TypeDeclaration) FieldByName(name int) *StructField {
 
 // FieldByNameFunc implements Type.
 func (n *TypeDeclaration) FieldByNameFunc(match func(int) bool) *StructField {
+	if n.ctx != nil {
+		n.boot()
+	}
 	if n.typ == nil {
 		panic("FieldByNameFunc of an inappropriate type")
 	}
@@ -1205,10 +1229,18 @@ func (n *TypeDeclaration) FieldByNameFunc(match func(int) bool) *StructField {
 }
 
 // Identical reports whether this type is identical to u.
-func (n *TypeDeclaration) Identical(u Type) bool { return n == u }
+func (n *TypeDeclaration) Identical(u Type) bool {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n == u
+}
 
 // In implements Type.
 func (n *TypeDeclaration) In(i int) Type {
+	if n.ctx != nil {
+		n.boot()
+	}
 	if n.typ == nil {
 		panic("In of an inappropriate type")
 	}
@@ -1218,6 +1250,9 @@ func (n *TypeDeclaration) In(i int) Type {
 
 // IsVariadic implements Type.
 func (n *TypeDeclaration) IsVariadic() bool {
+	if n.ctx != nil {
+		n.boot()
+	}
 	if n.typ == nil {
 		panic("IsVariadic of an inappropriate type")
 	}
@@ -1227,6 +1262,9 @@ func (n *TypeDeclaration) IsVariadic() bool {
 
 // Key implements Type.
 func (n *TypeDeclaration) Key() Type {
+	if n.ctx != nil {
+		n.boot()
+	}
 	if n.typ == nil {
 		panic("Key of an inappropriate type")
 	}
@@ -1236,6 +1274,9 @@ func (n *TypeDeclaration) Key() Type {
 
 // Len implements Type.
 func (n *TypeDeclaration) Len() int64 {
+	if n.ctx != nil {
+		n.boot()
+	}
 	if n.typ == nil {
 		panic("Len of an inappropriate type")
 	}
@@ -1245,6 +1286,9 @@ func (n *TypeDeclaration) Len() int64 {
 
 // NumField implements Type.
 func (n *TypeDeclaration) NumField() int {
+	if n.ctx != nil {
+		n.boot()
+	}
 	if n.typ == nil {
 		panic("NumField of an inappropriate type")
 	}
@@ -1254,6 +1298,9 @@ func (n *TypeDeclaration) NumField() int {
 
 // NumIn implements Type.
 func (n *TypeDeclaration) NumIn() int {
+	if n.ctx != nil {
+		n.boot()
+	}
 	if n.typ == nil {
 		panic("NumIn of an inappropriate type")
 	}
@@ -1263,6 +1310,9 @@ func (n *TypeDeclaration) NumIn() int {
 
 // Numeric implements Type.
 func (n *TypeDeclaration) Numeric() bool {
+	if n.ctx != nil {
+		n.boot()
+	}
 	if n.typ == nil {
 		switch n.Kind() {
 		case Int8, Int16, Int32, Int64, Int, Uint8, Uint16, Uint32, Uint64, Uint, Float32, Float64, Complex64, Complex128, Uintptr:
@@ -1277,6 +1327,9 @@ func (n *TypeDeclaration) Numeric() bool {
 
 // NumOut implements Type.
 func (n *TypeDeclaration) NumOut() int {
+	if n.ctx != nil {
+		n.boot()
+	}
 	if n.typ == nil {
 		panic("NumOut of an inappropriate type")
 	}
@@ -1286,6 +1339,9 @@ func (n *TypeDeclaration) NumOut() int {
 
 // Out implements Type.
 func (n *TypeDeclaration) Out(i int) Type {
+	if n.ctx != nil {
+		n.boot()
+	}
 	if n.typ == nil {
 		panic("Out of an inappropriate type")
 	}
@@ -1294,6 +1350,9 @@ func (n *TypeDeclaration) Out(i int) Type {
 }
 
 func (n *TypeDeclaration) str(w *bytes.Buffer) {
+	if n.ctx != nil {
+		n.boot()
+	}
 	if b := n.qualifier; b != 0 {
 		w.Write(dict.S(b))
 		w.WriteByte('.')
