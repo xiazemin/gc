@@ -323,12 +323,9 @@ func (s *Scope) check(ctx *context) (stop bool) {
 	}
 	if s.Kind == PackageScope {
 		for _, d := range a {
-			x, ok := d.(*FuncDeclaration)
-			if !ok {
-				continue
+			if _, ok := d.(*FuncDeclaration); ok {
+				todo(d) //TODO check function's block
 			}
-
-			_ = x //TODO check function's block
 		}
 	}
 	return false
