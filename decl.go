@@ -316,6 +316,11 @@ func (s *Scope) check(ctx *context) (stop bool) {
 			return true
 		}
 	}
+	for _, d := range a {
+		if x, ok := d.(*TypeDeclaration); ok && x.ctx != nil {
+			x.boot()
+		}
+	}
 	if s.Kind == PackageScope {
 		for _, d := range a {
 			x, ok := d.(*FuncDeclaration)
@@ -727,6 +732,7 @@ func (n *ParameterDeclaration) ScopeStart() token.Pos { return n.scopeStart }
 
 // TypeDeclaration represents a type declaration.
 type TypeDeclaration struct {
+	ctx        *context
 	flgs       flags
 	guard      gate
 	isExported bool
@@ -737,7 +743,7 @@ type TypeDeclaration struct {
 	qualifier  int  // String(): "qualifier.name".
 	typ        Type // bar in type foo bar.
 	typ0       *Typ // bar in type foo bar.
-	typeBase
+	typeBase   typeBase
 }
 
 func newTypeDeclaration(lx *lexer, nm xc.Token, typ0 *Typ) *TypeDeclaration {
@@ -766,9 +772,27 @@ func newTypeDeclaration(lx *lexer, nm xc.Token, typ0 *Typ) *TypeDeclaration {
 func (n *TypeDeclaration) flags() flags { return n.flgs }
 
 func (n *TypeDeclaration) check(ctx *context) (stop bool) {
+	if n.ctx != nil {
+		return false
+	}
+
+	ctx2 := *ctx
+	ctx2.stack = append([]Declaration(nil), ctx.stack...)
+	n.ctx = &ctx2
+	return false
+}
+
+func (n *TypeDeclaration) boot() {
+	if n.ctx == nil {
+		return
+	}
+
+	ctx := n.ctx
+	n.ctx = nil
+
 	done, stop := n.guard.check(ctx, n, nil)
 	if done || stop {
-		return stop
+		return
 	}
 
 	defer n.guard.done(ctx)
@@ -792,14 +816,14 @@ func (n *TypeDeclaration) check(ctx *context) (stop bool) {
 		var index int
 		for _, m := range a {
 			if m.check(ctx) {
-				return true
+				return
 			}
 
 			if m.Name() != idUnderscore {
 				var pth int
 				fd := m.(*FuncDeclaration)
 				if !fd.isExported {
-					pth = n.pkgPath
+					pth = n.typeBase.pkgPath
 				}
 				mt := Method{m.Name(), pth, fd.Type, index, false}
 				index++
@@ -811,56 +835,56 @@ func (n *TypeDeclaration) check(ctx *context) (stop bool) {
 
 	t0 := n.typ0
 	if t0 == nil {
-		return false
+		return
 	}
 
 	if t0.check(ctx) {
-		return true
+		return
 	}
 
 	t := t0.Type
 	if t == nil {
-		return false
+		return
 	}
 
 	n.flgs = t.flags()
 	k := t.Kind()
 	if k == Invalid {
-		return false
+		return
 	}
 
 	n.typ = t
-	n.kind = k
-	n.align = t.Align()
-	n.fieldAlign = t.FieldAlign()
-	n.size = t.Size()
+	n.typeBase.kind = k
+	n.typeBase.align = t.Align()
+	n.typeBase.fieldAlign = t.FieldAlign()
+	n.typeBase.size = t.Size()
 	t = n
 	switch t.Kind() {
 	case Ptr:
 		for _, m := range a {
 			if ctx.err(m, "invalid receiver type %s (%s is a pointer type)", t, t) {
-				return true
+				return
 			}
 		}
 	case Interface:
 		for _, m := range a {
 			if fd := m.(*FuncDeclaration); !fd.ifaceMethod {
 				if ctx.err(m, "invalid receiver type %s (%s is an interface type)", t, t) {
-					return true
+					return
 				}
 			}
 		}
 	}
 	if n.pkg.unsafe && n.Name() == idPointer {
-		n.kind = UnsafePointer
+		n.typeBase.kind = UnsafePointer
 	}
 
-	u := t.UnderlyingType()
+	u := n.typ.UnderlyingType()
 	if u.Kind() == Ptr {
 		u = u.Elem()
 	}
 	if u.NumMethod() == 0 || u.Kind() == Ptr {
-		return false
+		return
 	}
 
 	m := map[int]struct{}{}
@@ -890,7 +914,203 @@ func (n *TypeDeclaration) check(ctx *context) (stop bool) {
 		mt2.Index = len(n.typeBase.methods)
 		n.typeBase.methods = append(n.typeBase.methods, mt2)
 	}
-	return false
+	return
+}
+
+func (n *TypeDeclaration) Align() int {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.Align()
+}
+
+func (n *TypeDeclaration) AssignableTo(u Type) bool {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.AssignableTo(u)
+}
+
+func (n *TypeDeclaration) Bits(ctx *Context) int {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.Bits(ctx)
+}
+
+func (n *TypeDeclaration) Comparable() bool {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.Comparable()
+}
+
+func (n *TypeDeclaration) ComplexType() bool {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.ComplexType()
+}
+
+func (n *TypeDeclaration) ConvertibleTo(u Type) bool {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.ConvertibleTo(u)
+}
+
+func (n *TypeDeclaration) FieldAlign() int {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.FieldAlign()
+}
+
+func (n *TypeDeclaration) FloatingPointType() bool {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.FloatingPointType()
+}
+
+func (n *TypeDeclaration) Implements(u Type) bool {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.Implements(u)
+}
+
+func (n *TypeDeclaration) IntegerType() bool {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.IntegerType()
+}
+
+func (n *TypeDeclaration) Kind() Kind {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.Kind()
+}
+
+func (n *TypeDeclaration) Method(i int) *Method {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.Method(i)
+}
+
+func (n *TypeDeclaration) MethodByName(nm int) *Method {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.MethodByName(nm)
+}
+
+func (n *TypeDeclaration) NumMethod() int {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.NumMethod()
+}
+
+func (n *TypeDeclaration) Ordered() bool {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.Ordered()
+}
+
+func (n *TypeDeclaration) PkgPath() int {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.PkgPath()
+}
+
+func (n *TypeDeclaration) Result() Type {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.Result()
+}
+
+func (n *TypeDeclaration) Size() uint64 {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.Size()
+}
+
+func (n *TypeDeclaration) String() string {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.String()
+}
+
+func (n *TypeDeclaration) UnderlyingType() Type {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.UnderlyingType()
+}
+
+func (n *TypeDeclaration) UnsignedIntegerType() bool {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.UnsignedIntegerType()
+}
+
+func (n *TypeDeclaration) base() *typeBase {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return &n.typeBase
+}
+
+func (n *TypeDeclaration) field(i int) Type {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.field(i)
+}
+
+func (n *TypeDeclaration) implementsFailed(ctx *context, nd Node, msg string, u Type) (stop bool) {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.implementsFailed(ctx, nd, msg, u)
+}
+
+func (n *TypeDeclaration) isNamed() bool {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.isNamed()
+}
+
+func (n *TypeDeclaration) numField() int {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.numField()
+}
+
+func (n *TypeDeclaration) setOffset(i int, u uint64) {
+	if n.ctx != nil {
+		n.boot()
+	}
+	n.typeBase.setOffset(i, u)
+}
+
+func (n *TypeDeclaration) signatureString(i int) string {
+	if n.ctx != nil {
+		n.boot()
+	}
+	return n.typeBase.signatureString(i)
 }
 
 // Pos implements Declaration.

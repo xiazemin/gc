@@ -375,7 +375,6 @@
 [PASS errorcheck] "interface": interface contains embedded non-interface int testdata/gc/fixedbugs/bug195.go:12:21
 [PASS errorcheck] "interface": interface contains embedded non-interface S testdata/gc/fixedbugs/bug195.go:15:15
 [PASS errorcheck] "interface": interface contains embedded non-interface I4 testdata/gc/fixedbugs/bug195.go:18:2
-[FAIL errorcheck: extra error] interface type loop involving I6 testdata/gc/fixedbugs/bug195.go:22:2
 [PASS errorcheck] "interface": interface contains embedded non-interface I5 testdata/gc/fixedbugs/bug195.go:26:2
 [PASS errorcheck] "cannot use|incompatible": cannot use 0 (type int) as type main.T in assignment testdata/gc/fixedbugs/bug197.go:14:11
 [PASS errorcheck] "cannot use|incompatible": cannot use type int as type main.T in assignment testdata/gc/fixedbugs/bug197.go:15:12
@@ -420,8 +419,8 @@
 [PASS errorcheck] "String": String undefined (type int has no field or method String) testdata/gc/fixedbugs/bug241.go:10:11
 [PASS errorcheck] "chan|incompatible": cannot use type chan <-chan int as type chan<- chan int in assignment testdata/gc/fixedbugs/bug249.go:10:27
 [PASS errorcheck] "chan|incompatible": cannot use type chan<- chan int as type chan <-chan int in assignment testdata/gc/fixedbugs/bug249.go:26:28
-[PASS errorcheck] "loop|interface": interface contains embedded non-interface I1 testdata/gc/fixedbugs/bug251.go:15:2
-[FAIL errorcheck: extra error] cannot use type main.I2 as type main.I1 in assignment:\n\tmain.I2 does not implement main.I1 (missing m method) testdata/gc/fixedbugs/bug251.go:19:13
+[FAIL errorcheck: extra error] interface contains embedded non-interface I2 testdata/gc/fixedbugs/bug251.go:11:2
+[FAIL errorcheck: missing error] "loop|interface" testdata/gc/fixedbugs/bug251.go:15:5
 [FAIL errorcheck: missing error] "cannot use|incompatible" testdata/gc/fixedbugs/bug252.go:14:10
 [PASS errorcheck] "truncated": constant 1.5 truncated to integer testdata/gc/fixedbugs/bug255.go:11:8
 [PASS errorcheck] "invalid array bound|not numeric": invalid array bound "abc" testdata/gc/fixedbugs/bug255.go:12:8
