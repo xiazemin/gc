@@ -1547,11 +1547,25 @@ func (n *VarDeclaration) check(ctx *context) (stop bool) {
 			switch {
 			case n.declFlags&varDeclRange != 0:
 				switch vt.Kind() {
-				case Slice:
+				case Ptr:
+					if vt.Elem().Kind() != Array {
+						todo(n, true) // invalid
+						return false
+					}
+
+					vt = vt.Elem()
+					fallthrough
+				case Array, Slice:
 					vt = newTupleType([]Type{ctx.intType, vt.Elem()})
+				case Chan:
+					vt = vt.Elem()
+				case Map:
+					vt = newTupleType([]Type{vt.Key(), vt.Elem()})
+				case String:
+					vt = newTupleType([]Type{ctx.intType, ctx.int32Type})
 				default:
 					//dbg("", vt.Kind())
-					todo(n, true)
+					todo(n, true) // invalid
 					return false
 				}
 			}
