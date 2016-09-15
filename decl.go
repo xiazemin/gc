@@ -1528,6 +1528,34 @@ func (n *VarDeclaration) check(ctx *context) (stop bool) {
 			break
 		}
 
+		vt := v.Type()
+		switch {
+		case n.declFlags&varDeclRange != 0:
+			switch vt.Kind() {
+			case Ptr:
+				if vt.Elem().Kind() != Array {
+					todo(n, true) // invalid
+					return false
+				}
+
+				vt = vt.Elem()
+				fallthrough
+			case Array, Slice:
+				vt = newTupleType([]Type{ctx.intType, vt.Elem()})
+			case Chan:
+				vt = vt.Elem()
+			case Map:
+				vt = newTupleType([]Type{vt.Key(), vt.Elem()})
+			case String:
+				vt = newTupleType([]Type{ctx.intType, ctx.int32Type})
+			default:
+				//dbg("", vt.Kind())
+				todo(n, true) // invalid
+				return false
+			}
+			v = newRuntimeValue(vt)
+		}
+
 		switch v.Kind() {
 		case ConstValue:
 			switch c := v.Const(); {
@@ -1543,32 +1571,6 @@ func (n *VarDeclaration) check(ctx *context) (stop bool) {
 				n.Type = c.Type()
 			}
 		case RuntimeValue:
-			vt := v.Type()
-			switch {
-			case n.declFlags&varDeclRange != 0:
-				switch vt.Kind() {
-				case Ptr:
-					if vt.Elem().Kind() != Array {
-						todo(n, true) // invalid
-						return false
-					}
-
-					vt = vt.Elem()
-					fallthrough
-				case Array, Slice:
-					vt = newTupleType([]Type{ctx.intType, vt.Elem()})
-				case Chan:
-					vt = vt.Elem()
-				case Map:
-					vt = newTupleType([]Type{vt.Key(), vt.Elem()})
-				case String:
-					vt = newTupleType([]Type{ctx.intType, ctx.int32Type})
-				default:
-					//dbg("", vt.Kind())
-					todo(n, true) // invalid
-					return false
-				}
-			}
 			switch vt.Kind() {
 			case Tuple:
 				elems := vt.Elements()
