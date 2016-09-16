@@ -3394,7 +3394,9 @@ func (n *StatementNonDecl) check(ctx *context) (stop bool) {
 			if !v.AssignableTo(ctx.Context, rt) {
 				switch v.Kind() {
 				case NilValue:
-					todo(n, true) // type mismatch
+					if ctx.err(n, "cannot use nil as type %s in return argument", rt) {
+						return true
+					}
 				default:
 					if ctx.err(n, "cannot use type %s as type %s in return argument", v.Type(), rt) {
 						return true
