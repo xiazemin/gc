@@ -258,7 +258,7 @@ func (s *Scope) mustLookupLabel(ctx *context, t xc.Token) Declaration {
 		return d
 	}
 
-	todo(t, true) // undefined label
+	ctx.err(t, "label %s not defined", t.S())
 	return nil
 }
 

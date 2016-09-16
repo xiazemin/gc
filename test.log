@@ -996,7 +996,7 @@
 [PASS errorcheck] "array bound|invalid expression": invalid array bound testdata/gc/fixedbugs/issue7525.go:16:5
 [PASS errorcheck] "array bound|invalid array": invalid array bound testdata/gc/fixedbugs/issue7525.go:17:5
 [PASS errorcheck] "array bound|invalid array": invalid array bound testdata/gc/fixedbugs/issue7525.go:18:5
-[FAIL errorcheck: missing error] "not defined" testdata/gc/fixedbugs/issue7538a.go:14:9
+[PASS errorcheck] "not defined": label _ not defined testdata/gc/fixedbugs/issue7538a.go:14:7
 [FAIL errorcheck: missing error] "not enough arguments" testdata/gc/fixedbugs/issue7675.go:16:21
 [FAIL errorcheck: missing error] "too many arguments" testdata/gc/fixedbugs/issue7675.go:18:27
 [FAIL errorcheck: missing error] "not enough arguments" testdata/gc/fixedbugs/issue7675.go:19:27
@@ -1265,7 +1265,7 @@
 [FAIL errorcheck: missing error] "label .*L5.* defined and not used" testdata/gc/label.go:27:5
 [PASS errorcheck] "label .*L6.* already defined": label L6 already defined, previous declaration at testdata/gc/label.go:29:1 testdata/gc/label.go:31:1
 [FAIL errorcheck: missing error] "label .*defalt.* defined and not used" testdata/gc/label.go:53:10
-[FAIL errorcheck: missing error] "label go2 not defined" testdata/gc/label.go:64:11
+[PASS errorcheck] "label go2 not defined": label go2 not defined testdata/gc/label.go:64:7
 [FAIL errorcheck: missing error] "invalid continue label .*L2|continue is not in a loop" testdata/gc/label1.go:34:16
 [FAIL errorcheck: missing error] "invalid continue label .*L2" testdata/gc/label1.go:41:16
 [FAIL errorcheck: missing error] "invalid continue label .*L3|continue is not in a loop" testdata/gc/label1.go:52:16
