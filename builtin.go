@@ -6,6 +6,21 @@ package gc
 
 func builtinAppend(ctx *context, call *Call) Value {
 	args, _, ddd := call.args()
+	nodes := make([]Node, len(args))
+	for i := range nodes {
+		nodes[i] = call.ArgumentList.node(i)
+	}
+	if len(args) == 1 && args[0] != nil && args[0].Type().Kind() == Tuple {
+		el := args[0].Type().Elements()
+		args = make([]Value, len(el))
+		node0 := call.ArgumentList.node(0)
+		nodes = make([]Node, len(args))
+		for i, v := range el {
+			args[i] = newRuntimeValue(v)
+			nodes[i] = node0
+		}
+	}
+
 	if len(args) < 2 {
 		todo(call.ArgumentList, true) // not enough args
 		return nil
@@ -21,7 +36,7 @@ func builtinAppend(ctx *context, call *Call) Value {
 		todo(call, true) // invalid arg
 		return nil
 	case NilValue:
-		ctx.err(call.ArgumentList.node(0), "first argument to append must be typed slice; have untyped nil")
+		ctx.err(nodes[0], "first argument to append must be typed slice; have untyped nil")
 		return nil
 	}
 
@@ -40,13 +55,14 @@ func builtinAppend(ctx *context, call *Call) Value {
 	case ddd:
 		todo(call)
 	default:
-		for _, v := range args[1:] {
+		for i, v := range args[1:] {
 			if v == nil {
 				continue
 			}
 
-			if !v.AssignableTo(ctx.Context, et) {
-				todo(call, true) // type mismatch
+			if !v.AssignableTo(ctx.Context, et) &&
+				ctx.err(nodes[i+1], "cannot append %s value to %s", v.Type(), st) {
+				return nil
 			}
 		}
 		return newRuntimeValue(st)
