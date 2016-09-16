@@ -3052,25 +3052,35 @@ func (n *SimpleStatement) check(ctx *context, used bool) (stop bool) {
 	case 0: // Assignment
 		// nop
 	case 1: // Expression
-		v := n.Expression.Value
+		e := n.Expression
+		if e == nil {
+			break
+		}
+
+		v := e.Value
 		if v == nil {
 			break
 		}
 
-		if used || isVoid(v.Type()) || n.Expression.isCall() || n.Expression.isChanReceive() {
+		if used || isVoid(v.Type()) || e.isCall() || e.isChanReceive() {
 			break
 		}
 
 		switch v.Kind() {
 		case ConstValue:
-			if ctx.err(n.Expression, "%s evaluated but not used", v.Const()) {
+			if ctx.err(e, "%s evaluated but not used", v.Const()) {
 				return true
 			}
+		case RuntimeValue:
+			//dbg("%s:\n%s", position(n.Pos()), PrettyString(e))
+			//panic(-3076)
+			todo(n, true) // unused
 		case TypeValue:
-			if ctx.err(n.Expression, "type %s is not an expression", v.(*typeValue).Type()) {
+			if ctx.err(e, "type %s is not an expression", v.(*typeValue).Type()) {
 				return true
 			}
 		default:
+			//dbg("", v.Kind())
 			todo(n, true) // unused value
 		}
 	case 2: // Expression "--"
