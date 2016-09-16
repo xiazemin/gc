@@ -110,7 +110,7 @@ func builtinComplex(ctx *context, call *Call) Value {
 		todo(call.ArgumentList, true) // ... invalid
 	}
 	if len(args) < 2 {
-		todo(call.ArgumentList, true) // not enough args
+		ctx.err(call, "invalid operation: complex expects two arguments")
 		return nil
 	}
 

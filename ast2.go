@@ -2382,10 +2382,10 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 		case TypeValue:
 			t := v.Type()
 			n.flags = n.flags | t.flags()
-			if t.Kind() == Interface {
-				todo(n, true)
-				break
-			}
+			//TODO- if t.Kind() == Interface {
+			//TODO- 	todo(n, true)
+			//TODO- 	break
+			//TODO- }
 
 			needPtrRx := false
 			m := t.MethodByName(nm.Val)

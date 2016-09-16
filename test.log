@@ -1023,8 +1023,8 @@
 [FAIL errorcheck: missing error] "not enough arguments in call to t\.M" testdata/gc/fixedbugs/issue8385.go:39:11
 [FAIL errorcheck: missing error] "not enough arguments in call to method expression T\.M" testdata/gc/fixedbugs/issue8385.go:40:11
 [FAIL errorcheck: missing error] "not enough arguments in call to method expression \(\*T\)\.M" testdata/gc/fixedbugs/issue8385.go:41:11
-[FAIL errorcheck: missing error] "invalid operation|not enough arguments" testdata/gc/fixedbugs/issue8501.go:16:19
-[FAIL errorcheck: missing error] "invalid operation|not enough arguments" testdata/gc/fixedbugs/issue8501.go:17:19
+[PASS errorcheck] "invalid operation|not enough arguments": invalid operation: complex expects two arguments testdata/gc/fixedbugs/issue8501.go:16:13
+[PASS errorcheck] "invalid operation|not enough arguments": invalid operation: complex expects two arguments testdata/gc/fixedbugs/issue8501.go:17:13
 [PASS errorcheck] "invalid recursive type T": invalid recursive type T testdata/gc/fixedbugs/issue8507.go:12:18
 [FAIL errorcheck: missing error] "cannot use.*type byte.*as type float64" testdata/gc/fixedbugs/issue8745.go:12:23
 [FAIL errorcheck: missing error] ".*" testdata/gc/fixedbugs/issue8836.go:22:7
