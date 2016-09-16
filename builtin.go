@@ -94,7 +94,7 @@ func builtinCap(ctx *context, call *Call) Value {
 		switch t := v.Type(); t.Kind() {
 		case Ptr:
 			if t.Elem().Kind() != Array {
-				todo(call, true) // Invalid
+				ctx.err(call.ArgumentList.node(0), "invalid argument (type %s) for cap", t)
 				break
 			}
 
@@ -234,7 +234,7 @@ func builtinLen(ctx *context, call *Call) Value {
 		switch t := v.Type(); t.Kind() {
 		case Ptr:
 			if t.Elem().Kind() != Array {
-				todo(call, true) // Invalid
+				ctx.err(call.ArgumentList.node(0), "invalid argument (type %s) for len", t)
 				break
 			}
 

@@ -1205,18 +1205,18 @@
 [PASS errorcheck] "import path": import path contains invalid character testdata/gc/import5.go:51:8
 [PASS errorcheck] "import path cannot be absolute path": import path cannot be absolute path testdata/gc/import5.go:54:8
 [PASS errorcheck] "import path contains invalid character": import path contains invalid character testdata/gc/import5.go:55:8
-[FAIL errorcheck: missing error] "illegal|invalid|must be" testdata/gc/indirect1.go:41:12
-[FAIL errorcheck: missing error] "illegal|invalid|must be" testdata/gc/indirect1.go:42:12
-[FAIL errorcheck: missing error] "illegal|invalid|must be" testdata/gc/indirect1.go:44:12
-[FAIL errorcheck: missing error] "illegal|invalid|must be" testdata/gc/indirect1.go:47:12
-[FAIL errorcheck: missing error] "illegal|invalid|must be" testdata/gc/indirect1.go:48:12
-[FAIL errorcheck: missing error] "illegal|invalid|must be" testdata/gc/indirect1.go:50:12
-[FAIL errorcheck: missing error] "illegal|invalid|must be" testdata/gc/indirect1.go:61:12
-[FAIL errorcheck: missing error] "illegal|invalid|must be" testdata/gc/indirect1.go:62:12
-[FAIL errorcheck: missing error] "illegal|invalid|must be" testdata/gc/indirect1.go:64:12
-[FAIL errorcheck: missing error] "illegal|invalid|must be" testdata/gc/indirect1.go:67:12
-[FAIL errorcheck: missing error] "illegal|invalid|must be" testdata/gc/indirect1.go:68:12
-[FAIL errorcheck: missing error] "illegal|invalid|must be" testdata/gc/indirect1.go:70:11
+[PASS errorcheck] "illegal|invalid|must be": invalid argument (type *map[string]int) for len testdata/gc/indirect1.go:41:7
+[PASS errorcheck] "illegal|invalid|must be": invalid argument (type *map[string]int) for len testdata/gc/indirect1.go:42:7
+[PASS errorcheck] "illegal|invalid|must be": invalid argument (type *map[string]int) for len testdata/gc/indirect1.go:44:7
+[PASS errorcheck] "illegal|invalid|must be": invalid argument (type *string) for len testdata/gc/indirect1.go:47:7
+[PASS errorcheck] "illegal|invalid|must be": invalid argument (type *string) for len testdata/gc/indirect1.go:48:7
+[PASS errorcheck] "illegal|invalid|must be": invalid argument (type *string) for len testdata/gc/indirect1.go:50:7
+[PASS errorcheck] "illegal|invalid|must be": invalid argument (type *[]int) for len testdata/gc/indirect1.go:61:7
+[PASS errorcheck] "illegal|invalid|must be": invalid argument (type *[]int) for len testdata/gc/indirect1.go:62:7
+[PASS errorcheck] "illegal|invalid|must be": invalid argument (type *[]int) for len testdata/gc/indirect1.go:64:7
+[PASS errorcheck] "illegal|invalid|must be": invalid argument (type *[]int) for cap testdata/gc/indirect1.go:67:7
+[PASS errorcheck] "illegal|invalid|must be": invalid argument (type *[]int) for cap testdata/gc/indirect1.go:68:7
+[PASS errorcheck] "illegal|invalid|must be": invalid argument (type *[]int) for cap testdata/gc/indirect1.go:70:7
 [PASS errorcheck] "undefined.*init": undefined: init testdata/gc/init.go:18:2
 [PASS errorcheck] "unexported.*runtime\.init": cannot refer to unexported name runtime.init testdata/gc/init.go:19:10
 [FAIL errorcheck: missing error] "undefined.*init" testdata/gc/init.go:20:17
