@@ -834,7 +834,7 @@
 [FAIL errorcheck: missing error] "cannot import package as init" testdata/gc/fixedbugs/issue4517d.go:9:19
 [FAIL errorcheck: missing error] "invalid operation|non-integer type|incompatible type" testdata/gc/fixedbugs/issue4545.go:16:26
 [FAIL errorcheck: missing error] "invalid operation|non-integer type" testdata/gc/fixedbugs/issue4545.go:17:26
-[FAIL errorcheck: missing error] "is not a type|expected .;." testdata/gc/fixedbugs/issue4610.go:15:13
+[PASS errorcheck] "is not a type|expected .;.": expression is not a type testdata/gc/fixedbugs/issue4610.go:15:7
 [FAIL errorcheck: missing error] "defer requires function call, not conversion|is not used" testdata/gc/fixedbugs/issue4654.go:15:15
 [FAIL errorcheck: missing error] "go requires function call, not conversion|is not used" testdata/gc/fixedbugs/issue4654.go:16:27
 [FAIL errorcheck: missing error] "defer discards result of append|is not used" testdata/gc/fixedbugs/issue4654.go:23:21

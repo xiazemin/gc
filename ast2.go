@@ -2792,7 +2792,7 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 
 			n.Value = n.CompLitValue.Value()
 		default:
-			todo(n, true)
+			return ctx.err(n.PrimaryExpression, "expression is not a type")
 		}
 	case 10: // TypeLiteral '(' Expression CommaOpt ')'
 		t := n.TypeLiteral.Type
