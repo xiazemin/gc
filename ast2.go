@@ -1030,21 +1030,20 @@ func (n *ElseOpt) check(ctx *context) (stop bool) {
 // ----------------------------------------------------------------- Expression
 
 func (n *Expression) isCall() bool {
-	if n.Case != 0 {
-		return false
-	}
-
-	return n.UnaryExpression.isCall()
+	return n.Case == 0 && // UnaryExpression
+		n.UnaryExpression.Case == 7 && // PrimaryExpression
+		n.UnaryExpression.PrimaryExpression.Case == 8 // PrimaryExpression Call
 }
 
-func (n *Expression) isIndex() bool { return n.Case == 0 && n.UnaryExpression.isIndex() }
+func (n *Expression) isIndex() bool {
+	return n.Case == 0 && // UnaryExpression
+		n.UnaryExpression.Case == 7 && // PrimaryExpression
+		n.UnaryExpression.PrimaryExpression.Case == 5 // PrimaryExpression '[' Expression ']'
+}
 
 func (n *Expression) isChanReceive() bool {
-	if n.Case != 0 {
-		return false
-	}
-
-	return n.UnaryExpression.isChanReceive()
+	return n.Case == 0 && // UnaryExpression
+		n.UnaryExpression.Case == 6 // "<-" UnaryExpression
 }
 
 func (n *Expression) isIdentifier() (xc.Token, bool) { //TODO remove, use .ident()
@@ -2763,12 +2762,6 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 	return false
 }
 
-func (n *PrimaryExpression) isCall() bool {
-	return n.Case == 8 // PrimaryExpression Call
-}
-
-func (n *PrimaryExpression) isIndex() bool { return n.Case == 5 } // PrimaryExpression '[' Expression ']'
-
 func (n *PrimaryExpression) isIdentifier() (xc.Token, bool) {
 	if n.Case != 0 { // Operand
 		return xc.Token{}, false
@@ -3760,20 +3753,6 @@ func (n *TypeLiteral) check(ctx *context) (stop bool) {
 }
 
 // ------------------------------------------------------------ UnaryExpression
-
-func (n *UnaryExpression) isCall() bool {
-	if n.Case != 7 { // PrimaryExpression
-		return false
-	}
-
-	return n.PrimaryExpression.isCall()
-}
-
-func (n *UnaryExpression) isChanReceive() bool {
-	return n.Case == 6 // "<-" UnaryExpression
-}
-
-func (n *UnaryExpression) isIndex() bool { return n.Case == 7 && n.PrimaryExpression.isIndex() } // PrimaryExpression
 
 func (n *UnaryExpression) isIdentifier() (xc.Token, bool) {
 	if n.Case != 7 { // PrimaryExpression
