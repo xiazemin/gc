@@ -1,4 +1,4 @@
-// errorcheck
+// TODO errorcheck
 
 // Copyright 2009 The GC Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
