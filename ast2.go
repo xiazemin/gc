@@ -2132,16 +2132,28 @@ func (n *PrimaryExpression) checkSelector(ctx *context, t Type, nm xc.Token) []S
 	panic("internal error")
 }
 
-func (n *PrimaryExpression) checkSliceIndex(ctx *context, o *ExpressionOpt) Const {
-	if o == nil {
+func (n *PrimaryExpression) checkIndex(ctx *context, o Node, typ string) Const {
+	var e *Expression
+	switch x := o.(type) {
+	case nil:
+		return nil
+	case *ExpressionOpt:
+		if x == nil {
+			return nil
+		}
+
+		e = x.Expression
+	case *Expression:
+		e = x
+	default:
+		panic("internal error")
+	}
+
+	if e.check(ctx) {
 		return nil
 	}
 
-	if o.check(ctx) {
-		return nil
-	}
-
-	v := o.Value
+	v := e.Value
 	if v == nil {
 		return nil
 	}
@@ -2149,13 +2161,13 @@ func (n *PrimaryExpression) checkSliceIndex(ctx *context, o *ExpressionOpt) Cons
 	switch v.Kind() {
 	case ConstValue:
 		c := v.Const()
-		if !v.Integral() {
+		if !c.Integral() {
 			todo(n, true) // non-integer index
 			return nil
 		}
 
-		if !v.nonNegativeIntegral(ctx) {
-			ctx.err(o, "invalid slice index %s (index must be non-negative)", c)
+		if !c.nonNegativeIntegral(ctx) {
+			ctx.err(o, "invalid %s index %s (index must be non-negative)", typ, c)
 			return nil
 		}
 
@@ -2449,36 +2461,25 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 		// · a constant index must be non-negative and representable by
 		//   a value of type int
 		if pt.Kind() != Map {
-			if x.Kind() == RuntimeValue && !x.Type().IntegerType() {
-				switch pt.Kind() {
-				case Array:
-					if ctx.err(n.Expression, "non-integer array index") {
-						return true
-					}
-				case Slice:
-					if ctx.err(n.Expression, "non-integer slice index") {
-						return true
-					}
-				case String:
-					if ctx.err(n.Expression, "non-integer string index") {
-						return true
-					}
-				}
-
-				return false
+			var typ string
+			switch pt.Kind() {
+			case Array:
+				typ = "array"
+			case Slice:
+				typ = "slice"
+			case String:
+				typ = "string"
 			}
-
-			if x.Kind() == ConstValue {
-				constX = ctx.mustConvertConst(n.Expression, ctx.intType, x.Const())
+			switch {
+			case x.Kind() == RuntimeValue && !x.Type().IntegerType():
+				return ctx.err(n.Expression, "non-integer %s index", typ)
+			case x.Kind() == ConstValue:
+				constX = n.checkIndex(ctx, n.Expression, typ)
 				if constX == nil {
-					todo(n.Expression, true)
-					return false
+					return ctx.err(n.Expression, "non-integer %s index", typ)
 				}
-
-				if !constX.nonNegativeInteger(ctx) {
-					todo(n.Expression, true) // < 0
-					return false
-				}
+			default:
+				todo(n)
 			}
 		}
 
@@ -2604,7 +2605,9 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 
 				n.Value = newRuntimeValue(newSliceType(ctx, t.Elem()))
 				n.flags = n.flags | t.Elem().flags()
-			case Slice, String:
+			case Slice:
+				n.Value = v
+			case String:
 				n.Value = v
 			default:
 				//dbg("", t.Kind())
@@ -2614,8 +2617,8 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 			//dbg("", v.Kind())
 			todo(n)
 		}
-		l := n.checkSliceIndex(ctx, n.ExpressionOpt)
-		h := n.checkSliceIndex(ctx, n.ExpressionOpt2)
+		l := n.checkIndex(ctx, n.ExpressionOpt, "slice")
+		h := n.checkIndex(ctx, n.ExpressionOpt2, "slice")
 		if l != nil && h != nil {
 			if l.(*intConst).val > h.(*intConst).val {
 				todo(n, true) // l >= h
