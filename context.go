@@ -642,7 +642,7 @@ func (c *context) arithmeticBinOpShape(a, b Const, n Node, op string) (Type, boo
 		case b.Untyped():
 			t := c.untypedArithmeticBinOpType(a.Type(), b.Type())
 			if t == nil {
-				todo(n, true)
+				c.err(n, "invalid operation: (mismatched types %s and %s)", a.Type(), b.Type())
 				break
 			}
 

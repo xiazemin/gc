@@ -990,7 +990,7 @@
 [PASS errorcheck] "non-integer.*len": non-integer len argument in make([]byte) - untyped string testdata/gc/fixedbugs/issue7223.go:19:19
 [FAIL errorcheck: missing error] "use of untyped nil" testdata/gc/fixedbugs/issue7310.go:12:25
 [FAIL errorcheck: missing error] "use of untyped nil" testdata/gc/fixedbugs/issue7310.go:13:25
-[FAIL errorcheck: missing error] "cannot convert true" "mismatched types int and bool" testdata/gc/fixedbugs/issue7310.go:14:13
+[PASS errorcheck] "cannot convert true" "mismatched types int and bool": invalid operation: (mismatched types int and bool) testdata/gc/fixedbugs/issue7310.go:14:7
 [PASS errorcheck] "array bound|typechecking loop|invalid expression": invalid array bound testdata/gc/fixedbugs/issue7525.go:14:5
 [PASS errorcheck] "array bound": invalid array bound testdata/gc/fixedbugs/issue7525.go:15:5
 [PASS errorcheck] "array bound|invalid expression": invalid array bound testdata/gc/fixedbugs/issue7525.go:16:5
