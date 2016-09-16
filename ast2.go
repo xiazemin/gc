@@ -709,10 +709,9 @@ func (*CompLitValue) check(ctx *context, n CompositeLiteralValue, t Type) (stop 
 
 					i := v.Const().int()
 					if len >= 0 && i >= len {
-						todo(e, true)
-						//if ctx.err(e, "array index %d out of bounds [0:%d]", i, len) {
-						//	return true
-						//}
+						if ctx.err(e, "array index %d out of bounds [0:%d]", i, len) {
+							return true
+						}
 
 						break
 					}

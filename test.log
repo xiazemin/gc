@@ -624,7 +624,7 @@
 [FAIL errorcheck: missing error] "index must be non\-negative integer constant" testdata/gc/fixedbugs/issue13365.go:14:22
 [FAIL errorcheck: missing error] "index must be non\-negative integer constant" testdata/gc/fixedbugs/issue13365.go:15:22
 [FAIL errorcheck: missing error] "index must be non\-negative integer constant" testdata/gc/fixedbugs/issue13365.go:16:22
-[FAIL errorcheck: missing error] "array index 100 out of bounds" testdata/gc/fixedbugs/issue13365.go:19:22
+[PASS errorcheck] "array index 100 out of bounds": array index 100 out of bounds [0:10] testdata/gc/fixedbugs/issue13365.go:19:14
 [PASS errorcheck] "cannot use .* as type int in array or slice literal": cannot use value of type struct{} as type int in array or slice literal testdata/gc/fixedbugs/issue13365.go:22:12
 [PASS errorcheck] "cannot use .* as type int in array or slice literal": cannot use value of type struct{} as type int in array or slice literal testdata/gc/fixedbugs/issue13365.go:23:14
 [PASS errorcheck] "cannot use .* as type int in array or slice literal": cannot use value of type struct{} as type int in array or slice literal testdata/gc/fixedbugs/issue13365.go:24:15
@@ -953,10 +953,10 @@
 [FAIL errorcheck: missing error] "in argument to f" testdata/gc/fixedbugs/issue7129.go:19:16
 [FAIL errorcheck: missing error] "in argument to h" testdata/gc/fixedbugs/issue7129.go:20:16
 [FAIL errorcheck: missing error] "index must be non-negative integer constant" testdata/gc/fixedbugs/issue7150.go:12:34
-[PASS errorcheck] "index 0 out of bounds \[0:0\]": array index 0 out of bounds [0:0] testdata/gc/fixedbugs/issue7150.go:13:16
-[FAIL errorcheck: error does not match] "index 5 out of bounds \[0:0\]": array index 0 out of bounds [0:0] testdata/gc/fixedbugs/issue7150.go:14:16
-[FAIL errorcheck: missing error] "index 15 out of bounds \[0:10\]" testdata/gc/fixedbugs/issue7150.go:15:34
-[FAIL errorcheck: missing error] "index 12 out of bounds \[0:10\]" testdata/gc/fixedbugs/issue7150.go:16:34
+[PASS errorcheck] "index 0 out of bounds \[0:0\]": array index 0 out of bounds [0:0] testdata/gc/fixedbugs/issue7150.go:13:13
+[PASS errorcheck] "index 5 out of bounds \[0:0\]": array index 5 out of bounds [0:0] testdata/gc/fixedbugs/issue7150.go:14:13
+[PASS errorcheck] "index 15 out of bounds \[0:10\]": array index 15 out of bounds [0:10] testdata/gc/fixedbugs/issue7150.go:15:21
+[PASS errorcheck] "index 12 out of bounds \[0:10\]": array index 12 out of bounds [0:10] testdata/gc/fixedbugs/issue7150.go:16:26
 [PASS errorcheck] "undefined: a" "cannot use true \(type bool\) as type int in array or slice literal": undefined: a testdata/gc/fixedbugs/issue7153.go:11:15
 [PASS errorcheck] "duplicate key": duplicate key 2 in map literal testdata/gc/fixedbugs/issue7214.go:11:35
 [PASS errorcheck] "duplicate key": duplicate key int16(2) in map literal testdata/gc/fixedbugs/issue7214.go:13:42
