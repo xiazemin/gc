@@ -21,7 +21,7 @@ func builtinAppend(ctx *context, call *Call) Value {
 		todo(call, true) // invalid arg
 		return nil
 	case NilValue:
-		todo(call, true) // invalid arg
+		ctx.err(call.ArgumentList.node(0), "first argument to append must be typed slice; have untyped nil")
 		return nil
 	}
 

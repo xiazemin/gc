@@ -928,7 +928,7 @@
 [FAIL errorcheck: missing error] "use of untyped nil" testdata/gc/fixedbugs/issue6004.go:10:10
 [FAIL errorcheck: missing error] "use of untyped nil" testdata/gc/fixedbugs/issue6004.go:11:16
 [FAIL errorcheck: missing error] "use of untyped nil" testdata/gc/fixedbugs/issue6004.go:12:16
-[FAIL errorcheck: missing error] "untyped nil" testdata/gc/fixedbugs/issue6004.go:13:27
+[PASS errorcheck] "untyped nil": first argument to append must be typed slice; have untyped nil testdata/gc/fixedbugs/issue6004.go:13:13
 [FAIL errorcheck: missing error] "cannot use nil as type uintptr in return argument" testdata/gc/fixedbugs/issue6402.go:12:13
 [PASS errorcheck] "undefined: syscall.X": undefined: syscall.X testdata/gc/fixedbugs/issue6403.go:13:23
 [PASS errorcheck] "undefined: voidpkg": undefined: voidpkg testdata/gc/fixedbugs/issue6403.go:14:15
