@@ -2630,8 +2630,7 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 		l := n.checkIndex(ctx, n.ExpressionOpt, "slice")
 		h := n.checkIndex(ctx, n.ExpressionOpt2, "slice")
 		if l != nil && h != nil && l.int() > h.int() {
-			todo(n.ExpressionOpt, true) // l >= h
-			return
+			return ctx.err(n.ExpressionOpt, "invalid slice index: %d > %d", l.int(), h.int())
 		}
 
 		switch v.Type().Kind() {

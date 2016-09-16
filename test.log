@@ -772,9 +772,9 @@
 [PASS errorcheck] "invalid slice index -1|index out of bounds": invalid slice index -1 (index must be non-negative) testdata/gc/fixedbugs/issue4232.go:48:8
 [PASS errorcheck] "invalid slice index -1|index out of bounds": invalid slice index -1 (index must be non-negative) testdata/gc/fixedbugs/issue4232.go:49:9
 [PASS errorcheck] "overflows int" "invalid slice index 1 << 100|index out of bounds": constant 1267650600228229401496703205376 overflows int testdata/gc/fixedbugs/issue4232.go:55:8
-[FAIL errorcheck: missing error] "invalid slice index|inverted slice range" testdata/gc/fixedbugs/issue4251.go:12:17
-[FAIL errorcheck: missing error] "invalid slice index|inverted slice range" testdata/gc/fixedbugs/issue4251.go:16:17
-[FAIL errorcheck: missing error] "invalid slice index|inverted slice range" testdata/gc/fixedbugs/issue4251.go:20:17
+[PASS errorcheck] "invalid slice index|inverted slice range": invalid slice index: 2 > 1 testdata/gc/fixedbugs/issue4251.go:12:11
+[PASS errorcheck] "invalid slice index|inverted slice range": invalid slice index: 2 > 1 testdata/gc/fixedbugs/issue4251.go:16:11
+[PASS errorcheck] "invalid slice index|inverted slice range": invalid slice index: 2 > 1 testdata/gc/fixedbugs/issue4251.go:20:11
 [FAIL errorcheck: missing error] "division by zero" testdata/gc/fixedbugs/issue4264.go:16:15
 [PASS errorcheck] "invalid": invalid operand for binary == testdata/gc/fixedbugs/issue4283.go:12:13
 [PASS errorcheck] "invalid": invalid operand for binary != testdata/gc/fixedbugs/issue4283.go:16:13
@@ -1648,7 +1648,7 @@
 [FAIL errorcheck: missing error] "3-index slice of string" "middle index required in 3-index slice" testdata/gc/slice3err.go:51:16
 [FAIL errorcheck: missing error] "3-index slice of string" testdata/gc/slice3err.go:52:16
 [FAIL errorcheck: missing error] "3-index slice of string" testdata/gc/slice3err.go:53:17
-[FAIL errorcheck: missing error] "invalid slice index|inverted slice" testdata/gc/slice3err.go:57:17
+[PASS errorcheck] "invalid slice index|inverted slice": invalid slice index: 2 > 1 testdata/gc/slice3err.go:57:12
 [FAIL errorcheck: missing error] "invalid slice index|inverted slice" testdata/gc/slice3err.go:62:19
 [FAIL errorcheck: missing error] "invalid slice index|inverted slice" testdata/gc/slice3err.go:63:19
 [FAIL errorcheck: missing error] "invalid slice index|inverted slice" testdata/gc/slice3err.go:64:19
@@ -1657,7 +1657,7 @@
 [FAIL errorcheck: missing error] "invalid slice index|inverted slice" testdata/gc/slice3err.go:68:19
 [FAIL errorcheck: missing error] "invalid slice index" testdata/gc/slice3err.go:70:19
 [FAIL errorcheck: missing error] "invalid slice index|inverted slice" testdata/gc/slice3err.go:72:19
-[FAIL errorcheck: missing error] "invalid slice index|inverted slice" testdata/gc/slice3err.go:75:17
+[PASS errorcheck] "invalid slice index|inverted slice": invalid slice index: 2 > 1 testdata/gc/slice3err.go:75:12
 [FAIL errorcheck: missing error] "invalid slice index|inverted slice" testdata/gc/slice3err.go:80:19
 [FAIL errorcheck: missing error] "invalid slice index|inverted slice" testdata/gc/slice3err.go:81:19
 [FAIL errorcheck: missing error] "invalid slice index|inverted slice" testdata/gc/slice3err.go:82:19
@@ -1666,7 +1666,7 @@
 [FAIL errorcheck: missing error] "invalid slice index|inverted slice" testdata/gc/slice3err.go:86:19
 [FAIL errorcheck: missing error] "invalid slice index" testdata/gc/slice3err.go:88:19
 [FAIL errorcheck: missing error] "invalid slice index|inverted slice" testdata/gc/slice3err.go:90:19
-[FAIL errorcheck: missing error] "invalid slice index|inverted slice" testdata/gc/slice3err.go:93:15
+[PASS errorcheck] "invalid slice index|inverted slice": invalid slice index: 2 > 1 testdata/gc/slice3err.go:93:10
 [FAIL errorcheck: missing error] "out of bounds" testdata/gc/slice3err.go:99:19
 [FAIL errorcheck: missing error] "out of bounds" testdata/gc/slice3err.go:100:19
 [FAIL errorcheck: missing error] "out of bounds" testdata/gc/slice3err.go:101:17
