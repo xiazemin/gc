@@ -42,7 +42,7 @@ func builtinAppend(ctx *context, call *Call) Value {
 
 	st := sv.Type()
 	if st.Kind() != Slice {
-		todo(call, true) // expected slice
+		ctx.err(nodes[0], "first argument to append must be slice; have %s", st)
 		return nil
 	}
 
