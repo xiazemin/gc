@@ -2146,24 +2146,28 @@ func (n *PrimaryExpression) checkSliceIndex(ctx *context, o *ExpressionOpt) Cons
 		return nil
 	}
 
-	if !v.Type().Numeric() || !v.nonNegativeInteger(ctx) {
-		todo(n, true) // non-integer index
-		return nil
-	}
-
 	switch v.Kind() {
 	case ConstValue:
+		c := v.Const()
+		if !v.Integral() {
+			todo(n, true) // non-integer index
+			return nil
+		}
+
+		if !v.nonNegativeIntegral(ctx) {
+			ctx.err(o, "invalid slice index %s (index must be non-negative)", c)
+			return nil
+		}
+
+		if d := c.Convert(ctx.Context, ctx.intType); d != nil {
+			return d.Const()
+		}
+
+		ctx.err(o, "constant %s overflows int", c)
 	default:
 		//dbg("", v.Kind())
 		todo(n)
-		return nil
 	}
-
-	if c := v.Const().Convert(ctx.Context, ctx.intType); c != nil {
-		return c.Const()
-	}
-
-	todo(n, true) // const index overflow
 	return nil
 }
 
@@ -2467,6 +2471,7 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 			if x.Kind() == ConstValue {
 				constX = ctx.mustConvertConst(n.Expression, ctx.intType, x.Const())
 				if constX == nil {
+					todo(n.Expression, true)
 					return false
 				}
 
@@ -2599,6 +2604,8 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 
 				n.Value = newRuntimeValue(newSliceType(ctx, t.Elem()))
 				n.flags = n.flags | t.Elem().flags()
+			case Slice, String:
+				n.Value = v
 			default:
 				//dbg("", t.Kind())
 				todo(n, true) // cannot slice T
