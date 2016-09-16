@@ -1769,14 +1769,14 @@
 [PASS errorcheck] "undefined.*asdf": undefined: asdf testdata/gc/varerr.go:13:6
 [FAIL errorcheck: error does not match] "use of builtin new not in function call|invalid left hand side": invalid assignment destination testdata/gc/varerr.go:15:2
 [TODO "errorcheck -0 -l -d=wb"] testdata/gc/writebarrier.go
-[PASS errorcheck] "anonymous functions cannot have generic type parameters": anonymous functions cannot have generic type parameters testdata/issue15292/0.go:44:15
-[FAIL errorcheck: extra error] String undefined (type p.t has no field or method String) testdata/issue15292/0.go:207:10
-[FAIL errorcheck: extra error] Add undefined (type p.t has no field or method Add) testdata/issue15292/0.go:262:21
-[FAIL errorcheck: extra error] cannot use type *p.Pair297 as type p.Pair297 in return argument testdata/issue15292/0.go:311:2
-[FAIL errorcheck: extra error] Plus undefined (type p.t has no field or method Plus) testdata/issue15292/0.go:376:10
-[FAIL errorcheck: extra error] Divide undefined (type p.t has no field or method Divide) testdata/issue15292/0.go:378:12
-[FAIL errorcheck: extra error] cannot use type *p.List as type p.List in assignment testdata/issue15292/0.go:511:5
-[FAIL errorcheck: extra error] Less undefined (type p.t has no field or method Less) testdata/issue15292/0.go:534:15
+[PASS errorcheck] "anonymous functions cannot have generic type parameters": anonymous functions cannot have generic type parameters testdata/issue15292/0.go:45:15
+[FAIL errorcheck: extra error] String undefined (type p.t has no field or method String) testdata/issue15292/0.go:208:10
+[FAIL errorcheck: extra error] Add undefined (type p.t has no field or method Add) testdata/issue15292/0.go:263:21
+[FAIL errorcheck: extra error] cannot use type *p.Pair297 as type p.Pair297 in return argument testdata/issue15292/0.go:312:2
+[FAIL errorcheck: extra error] Plus undefined (type p.t has no field or method Plus) testdata/issue15292/0.go:377:10
+[FAIL errorcheck: extra error] Divide undefined (type p.t has no field or method Divide) testdata/issue15292/0.go:379:12
+[FAIL errorcheck: extra error] cannot use type *p.List as type p.List in assignment testdata/issue15292/0.go:512:5
+[FAIL errorcheck: extra error] Less undefined (type p.t has no field or method Less) testdata/issue15292/0.go:535:15
 [PASS errorcheck] "cannot use type func\(foo.t\) as type func\(\) in assignment": cannot use type func(foo.t) as type func() in assignment testdata/method.go:19:14
 [FAIL errorcheck: missing error] "cannot take address" testdata/method.go:22:17
 [FAIL errorcheck: error does not match] "cannot take address": cannot use type *func() as type func(foo.t) in assignment testdata/method.go:24:14

@@ -24,6 +24,7 @@ type ( //TODO-
 	b int
 	keytype int
 	valtype int
+	i interface{}
 )
 
 /*
@@ -221,7 +222,7 @@ func Concat(p Vector«t») string {
 type Lesser«t» interface {
 	Less(t) bool
 }
-func Min«t»(a, b t) t {
+func Min«i»(a, b i) i {
 	// Type switch optimized away at compile time if t is known to be/not to be a Lesser«t».
 	switch x := a.(type) {
 	case Lesser«t»:
@@ -253,9 +254,9 @@ func Min«t»(a, b t) t {
 type Addable«t» interface {
 	Add(t) t
 }
-func Sum244«t»(v Vector«t») t {
+func Sum244«i»(v Vector«i») i {
 	// Type switch optimized away at compile time if t is known to be/not to be a Addable«t».
-	switch t.(type) {
+	switch i.(type) {
 	case Addable«t»:
 		var sum t
 		for _, v := range v {
