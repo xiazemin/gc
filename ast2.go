@@ -1986,8 +1986,9 @@ func (n *PrimaryExpression) checkCall(ctx *context, ft Type, skip int) (stop boo
 		}
 
 		for i, arg := range args {
-			if arg != nil && !arg.AssignableTo(ctx.Context, n.variadicParam(ft, i+skip)) {
-				ctx.valueAssignmentFail(n.Call.ArgumentList.node(i), n.variadicParam(ft, i+skip), arg)
+			if arg != nil && !arg.AssignableTo(ctx.Context, n.variadicParam(ft, i+skip)) &&
+				ctx.valueAssignmentFail(n.Call.ArgumentList.node(i), n.variadicParam(ft, i+skip), arg) {
+				return true
 			}
 		}
 	case dots:
@@ -2014,14 +2015,17 @@ func (n *PrimaryExpression) checkCall(ctx *context, ft Type, skip int) (stop boo
 		}
 
 		for i, arg := range args {
-			if arg != nil && !arg.AssignableTo(n.variadicParam(ft, i+skip)) {
-				todo(n, true)
+			if t := n.variadicParam(ft, i+skip); arg != nil && !arg.AssignableTo(t) &&
+				ctx.err(n.Call.ArgumentList.node(0), "cannot use %s as type %s in argument to function", arg, t) {
+				return true
 			}
 		}
 	case tuple | dots:
 		fallthrough
 	case tuple | dots | variadic:
-		ctx.err(n.Call.ArgumentList.node(0), "multiple-value in single-value context")
+		if ctx.err(n.Call.ArgumentList.node(0), "multiple-value in single-value context") {
+			return true
+		}
 	default:
 	}
 	//TODO- switch {

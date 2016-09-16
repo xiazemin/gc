@@ -916,7 +916,7 @@
 [PASS errorcheck] "method value": invalid unsafe.Offset expression: argument is a method value testdata/gc/fixedbugs/issue4909a.go:35:28
 [PASS errorcheck] "non-local|redefinition": cannot define new methods on non-local type bufio.Reader testdata/gc/fixedbugs/issue5089.go:13:10
 [PASS errorcheck] "undefined": undefined: bar testdata/gc/fixedbugs/issue5172.go:12:4
-[FAIL errorcheck: missing error] "as type int in|incompatible type" testdata/gc/fixedbugs/issue5358.go:16:9
+[PASS errorcheck] "as type int in|incompatible type": cannot use []int as type int in argument to function testdata/gc/fixedbugs/issue5358.go:16:4
 [PASS errorcheck] "undefined.*Blah": undefined: Blah testdata/gc/fixedbugs/issue5581.go:29:9
 [PASS errorcheck] "array bound is too large|array bound overflows": array bound is too large testdata/gc/fixedbugs/issue5609.go:13:10
 [FAIL errorcheck: missing error] "invalid map key type" testdata/gc/fixedbugs/issue5698.go:18:22
