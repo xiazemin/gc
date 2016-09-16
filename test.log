@@ -983,11 +983,11 @@
 [PASS errorcheck] "duplicate key": duplicate key "a" in map literal testdata/gc/fixedbugs/issue7214.go:17:37
 [PASS errorcheck] "duplicate key": duplicate key p.S("a") in map literal testdata/gc/fixedbugs/issue7214.go:19:40
 [PASS errorcheck] "duplicate key": duplicate key p.N(2) in map literal testdata/gc/fixedbugs/issue7214.go:30:28
-[FAIL errorcheck: missing error] "non-integer.*len" testdata/gc/fixedbugs/issue7223.go:15:24
-[FAIL errorcheck: missing error] "non-integer.*len" testdata/gc/fixedbugs/issue7223.go:16:27
-[FAIL errorcheck: missing error] "non-integer.*cap" testdata/gc/fixedbugs/issue7223.go:17:27
-[FAIL errorcheck: missing error] "non-integer.*len" testdata/gc/fixedbugs/issue7223.go:18:25
-[FAIL errorcheck: missing error] "non-integer.*len" testdata/gc/fixedbugs/issue7223.go:19:26
+[PASS errorcheck] "non-integer.*len": non-integer len argument in make([]byte) - nil testdata/gc/fixedbugs/issue7223.go:15:19
+[PASS errorcheck] "non-integer.*len": non-integer len argument in make([]byte) - nil testdata/gc/fixedbugs/issue7223.go:16:19
+[PASS errorcheck] "non-integer.*cap": non-integer cap argument in make([]byte) - nil testdata/gc/fixedbugs/issue7223.go:17:22
+[PASS errorcheck] "non-integer.*len": non-integer len argument in make([]byte) - untyped bool testdata/gc/fixedbugs/issue7223.go:18:19
+[PASS errorcheck] "non-integer.*len": non-integer len argument in make([]byte) - untyped string testdata/gc/fixedbugs/issue7223.go:19:19
 [FAIL errorcheck: missing error] "use of untyped nil" testdata/gc/fixedbugs/issue7310.go:12:25
 [FAIL errorcheck: missing error] "use of untyped nil" testdata/gc/fixedbugs/issue7310.go:13:25
 [FAIL errorcheck: missing error] "cannot convert true" "mismatched types int and bool" testdata/gc/fixedbugs/issue7310.go:14:13

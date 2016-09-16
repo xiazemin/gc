@@ -246,7 +246,7 @@ func builtinLen(ctx *context, call *Call) Value {
 	return nil
 }
 
-func builtinMake(ctx *context, call *Call) Value {
+func builtinMake(ctx *context, call *Call) (rv Value) {
 	args, _, ddd := call.args()
 	if ddd {
 		ctx.err(call.ArgumentList, "invalid use of ... with builtin make")
@@ -260,41 +260,69 @@ func builtinMake(ctx *context, call *Call) Value {
 		todo(call.ArgumentList.node(3), true) // too many args
 	}
 
-	iarg := [3]int64{1: -1, 2: -1}
-	for i := 1; i <= 2 && i < len(args); i++ {
-		node := call.ArgumentList.node(i)
-		v := args[i]
-		if v == nil {
-			continue
+	defer func() {
+		if rv == nil {
+			return
 		}
 
-		switch v.Kind() {
-		case ConstValue:
-			c0 := v.Const()
-			c := c0.Convert(ctx.Context, ctx.intType)
-			if c == nil {
-				switch {
-				case v.Const().nonNegativeIntegral(ctx):
-					ctx.err(node, "len argument too large in make")
-				case c0.Kind() == BoolConst || c0.Kind() == StringConst:
-					todo(node, true) // non int
-				default:
-					ctx.constConversionFail(node, ctx.intType, v.Const())
-				}
-				return nil
+		iarg := [3]int64{1: -1, 2: -1}
+		for i := 1; i <= 2 && i < len(args); i++ {
+			node := call.ArgumentList.node(i)
+			v := args[i]
+			if v == nil {
+				continue
 			}
 
-			iarg[i] = c.Const().(*intConst).val
-		default:
-			//dbg("", v.Kind())
-			todo(node)
-		}
+			switch v.Kind() {
+			case ConstValue:
+				c0 := v.Const()
+				untyped := ""
+				if c0.Untyped() {
+					untyped = "untyped "
+				}
+				c := c0.Convert(ctx.Context, ctx.intType)
+				if c == nil {
+					switch {
+					case v.Const().nonNegativeIntegral(ctx):
+						ctx.err(node, "len argument too large in make")
+					case c0.Kind() == BoolConst || c0.Kind() == StringConst:
+						switch i {
+						case 1:
+							ctx.err(node, "non-integer len argument in make(%s) - %s%s", rv.Type(), untyped, c0.Type())
+						case 2:
+							ctx.err(node, "non-integer cap argument in make(%s) - %s%s", rv.Type(), untyped, c0.Type())
+						default:
+							panic("internal error")
+						}
+					default:
+						ctx.constConversionFail(node, ctx.intType, v.Const())
+					}
+					return
+				}
 
-		if !v.nonNegativeInteger(ctx) {
-			todo(node, true) // need >= 0
-			return nil
+				iarg[i] = c.Const().(*intConst).val
+			case NilValue:
+				switch i {
+				case 1:
+					ctx.err(node, "non-integer len argument in make(%s) - nil", rv.Type())
+				case 2:
+					ctx.err(node, "non-integer cap argument in make(%s) - nil", rv.Type())
+				default:
+					panic("internal error")
+				}
+				return
+			default:
+				//dbg("", v.Kind())
+				todo(node)
+			}
+
+			t := v.Type()
+			if t != nil && (!t.Numeric() || !v.Integral()) {
+				todo(node, true) // need >= 0
+				return
+			}
 		}
-	}
+	}()
 
 	v := args[0]
 	if v == nil {
@@ -327,10 +355,12 @@ func builtinMake(ctx *context, call *Call) Value {
 			return newRuntimeValue(t)
 		default:
 			todo(call, true) // invalid arg
+			return nil
 		}
 	default:
 		//dbg("", v.Kind())
 		todo(call, true) // not a type
+		return nil
 	}
 	return nil
 }
