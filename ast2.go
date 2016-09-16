@@ -1981,7 +1981,10 @@ func (n *PrimaryExpression) checkCall(ctx *context, ft Type, skip int) (stop boo
 	switch flags {
 	case variadic:
 		if len(args) < in-1-skip {
-			todo(n, true)
+			if ctx.err(n.Call.ArgumentList.node(0), "not enough arguments in call to function") {
+				return true
+			}
+
 			break
 		}
 
