@@ -160,7 +160,7 @@ func (n *ArgumentList) node(i int) Node {
 		n = n.ArgumentList
 		i--
 	}
-	return n
+	return n.Argument
 }
 
 func (n *ArgumentList) check(ctx *context) (stop bool) {

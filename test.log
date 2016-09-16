@@ -744,8 +744,8 @@
 [FAIL errorcheck: missing error] "missing key|must have keys" testdata/gc/fixedbugs/issue3925.go:15:12
 [PASS errorcheck] "cannot use|incompatible type": cannot use 20 (type int) as type string in array or slice literal testdata/gc/fixedbugs/issue3925.go:21:2
 [FAIL errorcheck: missing error] "negative" testdata/gc/fixedbugs/issue4085a.go:12:21
-[FAIL errorcheck: missing error] "constant 0.5 truncated to integer|non-integer len argument" testdata/gc/fixedbugs/issue4085a.go:13:21
-[FAIL errorcheck: missing error] "len argument too large" testdata/gc/fixedbugs/issue4085a.go:15:21
+[PASS errorcheck] "constant 0.5 truncated to integer|non-integer len argument": constant 0.5 truncated to integer testdata/gc/fixedbugs/issue4085a.go:13:14
+[PASS errorcheck] "len argument too large": len argument too large in make testdata/gc/fixedbugs/issue4085a.go:15:14
 [FAIL errorcheck: missing error] "negative cap" testdata/gc/fixedbugs/issue4085a.go:16:21
 [FAIL errorcheck: missing error] "len larger than cap" testdata/gc/fixedbugs/issue4085a.go:17:21
 [PASS errorcheck] "is not a constant|is not constant": const initializer is not a constant testdata/gc/fixedbugs/issue4097.go:10:11

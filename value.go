@@ -105,6 +105,7 @@ type Value interface {
 	mul(ctx *context, node Node, op Value) Value
 	neg(ctx *context, node Node) Value
 	neq(ctx *context, node Node, op Value) Value
+	nonNegativeIntegral(ctx *context) bool
 	nonNegativeInteger(ctx *context) bool
 	or(ctx *context, node Node, op Value) Value
 	rsh(ctx *context, node Node, op Value) Value
@@ -175,17 +176,18 @@ type Value interface {
 
 type valueBase struct{ kind ValueKind }
 
-func (v *valueBase) Addressable() bool                    { panic("Addressable of inappropriate value") }
-func (v *valueBase) assignableTo() bool                   { panic("assignableTo of inappropriate value") }
-func (v *valueBase) AssignableTo(*Context, Type) bool     { panic("AssignableTo of inappropriate value") }
-func (v *valueBase) Const() Const                         { panic("Const of inappropriate value") }
-func (v *valueBase) Convert(*Context, Type) Value         { panic("internal error") }
-func (v *valueBase) Declaration() Declaration             { return nil }
-func (v *valueBase) Integral() bool                       { panic("Integral of non-numeric value") }
-func (v *valueBase) Kind() ValueKind                      { return v.kind }
-func (v *valueBase) Nil() bool                            { panic("Nil of inappropriate value") }
-func (v *valueBase) nonNegativeInteger(ctx *context) bool { return false }
-func (v *valueBase) Type() Type                           { return nil }
+func (v *valueBase) Addressable() bool                     { panic("Addressable of inappropriate value") }
+func (v *valueBase) assignableTo() bool                    { panic("assignableTo of inappropriate value") }
+func (v *valueBase) AssignableTo(*Context, Type) bool      { panic("AssignableTo of inappropriate value") }
+func (v *valueBase) Const() Const                          { panic("Const of inappropriate value") }
+func (v *valueBase) Convert(*Context, Type) Value          { panic("internal error") }
+func (v *valueBase) Declaration() Declaration              { return nil }
+func (v *valueBase) Integral() bool                        { panic("Integral of non-numeric value") }
+func (v *valueBase) Kind() ValueKind                       { return v.kind }
+func (v *valueBase) Nil() bool                             { panic("Nil of inappropriate value") }
+func (v *valueBase) nonNegativeIntegral(ctx *context) bool { return false }
+func (v *valueBase) nonNegativeInteger(ctx *context) bool  { return false }
+func (v *valueBase) Type() Type                            { return nil }
 
 func (v *valueBase) add(ctx *context, n Node, op Value) Value {
 	ctx.err(n, "invalid operand for binary +")
@@ -327,6 +329,7 @@ func (v *constValue) mod(ctx *context, n Node, op Value) Value     { return v.c.
 func (v *constValue) mul(ctx *context, n Node, op Value) Value     { return v.c.mul(ctx, n, op) }
 func (v *constValue) neg(ctx *context, n Node) Value               { return v.c.neg(ctx, n) }
 func (v *constValue) neq(ctx *context, n Node, op Value) Value     { return v.c.neq(ctx, n, op) }
+func (v *constValue) nonNegativeIntegral(ctx *context) bool        { return v.c.nonNegativeIntegral(ctx) }
 func (v *constValue) nonNegativeInteger(ctx *context) bool         { return v.c.nonNegativeInteger(ctx) }
 func (v *constValue) or(ctx *context, n Node, op Value) Value      { return v.c.or(ctx, n, op) }
 func (v *constValue) rsh(ctx *context, n Node, op Value) Value     { return v.c.rsh(ctx, n, op) }
@@ -473,9 +476,14 @@ func (v *runtimeValue) assignableTo() bool                     { return v.addres
 func (v *runtimeValue) AssignableTo(ctx *Context, t Type) bool { return v.Type().AssignableTo(t) }
 func (v *runtimeValue) Declaration() Declaration               { return v.d }
 
+func (v *runtimeValue) nonNegativeIntegral(ctx *context) bool {
+	return v.nonNegativeInteger(ctx)
+}
+
 func (v *runtimeValue) nonNegativeInteger(ctx *context) bool {
 	return v.Type().Numeric() && v.Integral()
 }
+
 func (v *runtimeValue) Selector() (Value, []Selector, []Selector) { return v.root, v.path0, v.path }
 func (v *runtimeValue) Type() Type                                { return v.typ }
 
@@ -975,6 +983,7 @@ type Const interface {
 	neg(ctx *context, node Node) Value
 	neq(ctx *context, node Node, op Value) Value
 	neq0(ctx *context, n Node, t Type, untyped bool, op Const) Const
+	nonNegativeIntegral(*context) bool
 	nonNegativeInteger(*context) bool
 	normalize(ctx *context) Const // Keeps exact value or returns nil on overflow.
 	or(ctx *context, node Node, op Value) Value
@@ -1042,7 +1051,7 @@ func (c *constBase) eq0(*context, Node, Type, bool, Const) Const     { panic("in
 func (c *constBase) ge0(*context, Node, Type, bool, Const) Const     { panic("internal error") }
 func (c *constBase) gt0(*context, Node, Type, bool, Const) Const     { panic("internal error") }
 func (c *constBase) int() int64                                      { panic("internal error") }
-func (c *constBase) Integral() bool                                  { panic("internal error") }
+func (c *constBase) Integral() bool                                  { return false }
 func (c *constBase) Kind() ConstKind                                 { return c.kind }
 func (c *constBase) le0(*context, Node, Type, bool, Const) Const     { panic("internal error") }
 func (c *constBase) lt0(*context, Node, Type, bool, Const) Const     { panic("internal error") }
@@ -1051,6 +1060,7 @@ func (c *constBase) mod0(*context, Node, Type, bool, Const) Const    { panic("in
 func (c *constBase) mul0(*context, Node, Type, bool, Const) Const    { panic("internal error") }
 func (c *constBase) mustConvert(*context, Node, Type) Const          { panic("internal error") }
 func (c *constBase) neq0(*context, Node, Type, bool, Const) Const    { panic("internal error") }
+func (c *constBase) nonNegativeIntegral(*context) bool               { return false }
 func (c *constBase) nonNegativeInteger(*context) bool                { return false }
 func (c *constBase) normalize(ctx *context) Const                    { panic("internal error") }
 func (c *constBase) or0(*context, Node, Type, bool, Const) Const     { panic("internal error") }
@@ -1650,6 +1660,11 @@ func (c *complexConst) neq(ctx *context, n Node, op Value) Value {
 	return nil
 }
 
+func (c *complexConst) nonNegativeIntegral(ctx *context) bool {
+	todo(zeroNode)
+	return false
+}
+
 func (c *complexConst) nonNegativeInteger(ctx *context) bool {
 	return c.representable(ctx, ctx.intType) != nil
 }
@@ -1865,6 +1880,11 @@ func (c *floatConst) mapKey() mapKey {
 	}
 
 	return mapKey{c: complex(c.val, 0)}
+}
+
+func (c *floatConst) nonNegativeIntegral(ctx *context) bool {
+	todo(zeroNode)
+	return false
 }
 
 func (c *floatConst) nonNegativeInteger(ctx *context) bool {
@@ -2437,6 +2457,15 @@ func (c *intConst) neq(ctx *context, n Node, op Value) Value {
 		todo(n)
 	}
 	return nil
+}
+
+func (c *intConst) nonNegativeIntegral(ctx *context) bool {
+	switch {
+	case c.bigVal != nil:
+		return c.bigVal.Sign() >= 0
+	default:
+		return c.val >= 0
+	}
 }
 
 func (c *intConst) nonNegativeInteger(ctx *context) bool {

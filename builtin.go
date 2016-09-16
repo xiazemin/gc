@@ -262,28 +262,37 @@ func builtinMake(ctx *context, call *Call) Value {
 
 	iarg := [3]int64{1: -1, 2: -1}
 	for i := 1; i <= 2 && i < len(args); i++ {
+		node := call.ArgumentList.node(i)
 		v := args[i]
 		if v == nil {
 			continue
 		}
 
-		if !v.nonNegativeInteger(ctx) {
-			todo(call, true)
-			return nil
-		}
-
 		switch v.Kind() {
 		case ConstValue:
-			c := v.Const().Convert(ctx.Context, ctx.intType)
+			c0 := v.Const()
+			c := c0.Convert(ctx.Context, ctx.intType)
 			if c == nil {
-				todo(call, true) //TODO ctx.constConversionFail(call.ArgumentList.node(i), ctx.intType, v.Const())
+				switch {
+				case v.Const().nonNegativeIntegral(ctx):
+					ctx.err(node, "len argument too large in make")
+				case c0.Kind() == BoolConst || c0.Kind() == StringConst:
+					todo(node, true) // non int
+				default:
+					ctx.constConversionFail(node, ctx.intType, v.Const())
+				}
 				return nil
 			}
 
 			iarg[i] = c.Const().(*intConst).val
 		default:
 			//dbg("", v.Kind())
-			todo(call)
+			todo(node)
+		}
+
+		if !v.nonNegativeInteger(ctx) {
+			todo(node, true) // need >= 0
+			return nil
 		}
 	}
 
