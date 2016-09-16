@@ -3112,17 +3112,11 @@ func (n *SimpleStatement) check(ctx *context, used bool) (stop bool) {
 
 		switch v.Kind() {
 		case ConstValue:
-			if ctx.err(e, "%s evaluated but not used", v.Const()) {
-				return true
-			}
+			return ctx.err(e, "%s evaluated but not used", v.Const())
 		case RuntimeValue:
-			//dbg("%s:\n%s", position(n.Pos()), PrettyString(e))
-			//panic(-3076)
-			todo(n, true) // unused
+			return ctx.err(e, "expression evaluated but not used")
 		case TypeValue:
-			if ctx.err(e, "type %s is not an expression", v.(*typeValue).Type()) {
-				return true
-			}
+			return ctx.err(e, "type %s is not an expression", v.(*typeValue).Type())
 		default:
 			//dbg("", v.Kind())
 			todo(n, true) // unused value

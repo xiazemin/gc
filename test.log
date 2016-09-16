@@ -613,6 +613,20 @@
 [PASS errorcheck] "out of bounds": invalid array index 0 (out of bounds for 0-element array) testdata/gc/fixedbugs/issue12944.go:12:30
 [PASS errorcheck] "unexpected }": unexpected }, expected argument list or one of ['!', '&', '(', ')', '*', '+', '-', '[', '^', <-, chan, func, identifier, interface, literal, map, struct] testdata/gc/fixedbugs/issue13248.go:13:1
 [PASS errorcheck] "unexpected %": unexpected %, expected identifier testdata/gc/fixedbugs/issue13266.go:10:8
+[FAIL errorcheck: extra error] expression evaluated but not used testdata/gc/fixedbugs/issue13273.go:16:2
+[FAIL errorcheck: extra error] expression evaluated but not used testdata/gc/fixedbugs/issue13273.go:18:2
+[FAIL errorcheck: extra error] expression evaluated but not used testdata/gc/fixedbugs/issue13273.go:19:2
+[FAIL errorcheck: extra error] expression evaluated but not used testdata/gc/fixedbugs/issue13273.go:20:2
+[FAIL errorcheck: extra error] expression evaluated but not used testdata/gc/fixedbugs/issue13273.go:21:2
+[FAIL errorcheck: extra error] expression evaluated but not used testdata/gc/fixedbugs/issue13273.go:22:2
+[FAIL errorcheck: extra error] expression evaluated but not used testdata/gc/fixedbugs/issue13273.go:24:2
+[FAIL errorcheck: extra error] expression evaluated but not used testdata/gc/fixedbugs/issue13273.go:25:2
+[FAIL errorcheck: extra error] expression evaluated but not used testdata/gc/fixedbugs/issue13273.go:26:2
+[FAIL errorcheck: extra error] expression evaluated but not used testdata/gc/fixedbugs/issue13273.go:27:2
+[FAIL errorcheck: extra error] expression evaluated but not used testdata/gc/fixedbugs/issue13273.go:29:2
+[FAIL errorcheck: extra error] expression evaluated but not used testdata/gc/fixedbugs/issue13273.go:30:2
+[FAIL errorcheck: extra error] expression evaluated but not used testdata/gc/fixedbugs/issue13273.go:31:2
+[FAIL errorcheck: extra error] expression evaluated but not used testdata/gc/fixedbugs/issue13273.go:32:2
 [FAIL errorcheck: error does not match] "unexpected <-, expecting chan": unexpected <-, expected optional generic parameters or type or one of ['(', '*', '[', <-, chan, func, identifier, interface, map, struct, «] testdata/gc/fixedbugs/issue13273.go:50:9
 [FAIL errorcheck: error does not match] "unexpected <-, expecting chan|expecting {" (new parser: same error as for type decl): unexpected ;, expected one of ['(', ')', ',', ':', '=', ..., :=] testdata/gc/fixedbugs/issue13273.go:51:15
 [FAIL errorcheck: error does not match] "unexpected int, expecting chan|expecting chan": unexpected <-, expected type or one of ['(', '*', '[', <-, chan, func, identifier, interface, map, struct] testdata/gc/fixedbugs/issue13273.go:53:15
@@ -875,7 +889,7 @@
 [FAIL errorcheck: missing error] "not used" testdata/gc/fixedbugs/issue4654.go:68:22
 [FAIL errorcheck: missing error] "not used" testdata/gc/fixedbugs/issue4654.go:69:23
 [FAIL errorcheck: missing error] "not used" testdata/gc/fixedbugs/issue4654.go:70:19
-[FAIL errorcheck: missing error] "not used" testdata/gc/fixedbugs/issue4663.go:13:5
+[PASS errorcheck] "not used": expression evaluated but not used testdata/gc/fixedbugs/issue4663.go:13:3
 [PASS errorcheck] "package statement must be first|package clause": package statement must be first testdata/gc/fixedbugs/issue4776.go:9:1
 [FAIL errorcheck: extra error] invalid array index 2 (index must be non-negative) testdata/gc/fixedbugs/issue4813.go:30:9
 [FAIL errorcheck: error does not match] "truncated|must be integer": non-integer array index testdata/gc/fixedbugs/issue4813.go:31:9
