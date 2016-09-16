@@ -754,8 +754,8 @@
 [PASS errorcheck] "invalid slice index -1|index out of bounds": invalid slice index -1 (index must be non-negative) testdata/gc/fixedbugs/issue4232.go:15:8
 [PASS errorcheck] "invalid slice index -1|index out of bounds": invalid slice index -1 (index must be non-negative) testdata/gc/fixedbugs/issue4232.go:16:9
 [PASS errorcheck] "invalid array index 10|index out of bounds": invalid array index 10 (out of bounds for 10-element array) testdata/gc/fixedbugs/issue4232.go:17:8
-[FAIL errorcheck: missing error] "invalid slice index 12|index out of bounds" testdata/gc/fixedbugs/issue4232.go:20:25
-[FAIL errorcheck: missing error] "invalid slice index 11|index out of bounds" testdata/gc/fixedbugs/issue4232.go:21:25
+[PASS errorcheck] "invalid slice index 12|index out of bounds": invalid slice index 12 (out of bounds for 10-element array) testdata/gc/fixedbugs/issue4232.go:20:10
+[PASS errorcheck] "invalid slice index 11|index out of bounds": invalid slice index 11 (out of bounds for 10-element array) testdata/gc/fixedbugs/issue4232.go:21:8
 [PASS errorcheck] "overflows int" "invalid slice index 1 << 100|index out of bounds": constant 1267650600228229401496703205376 overflows int testdata/gc/fixedbugs/issue4232.go:22:8
 [PASS errorcheck] "invalid slice index -1|index out of bounds": invalid slice index -1 (index must be non-negative) testdata/gc/fixedbugs/issue4232.go:25:8
 [PASS errorcheck] "invalid slice index -1|index out of bounds": invalid slice index -1 (index must be non-negative) testdata/gc/fixedbugs/issue4232.go:26:8
@@ -764,9 +764,9 @@
 [PASS errorcheck] "invalid string index -1|index out of bounds": invalid string index -1 (index must be non-negative) testdata/gc/fixedbugs/issue4232.go:36:8
 [PASS errorcheck] "invalid slice index -1|index out of bounds": invalid slice index -1 (index must be non-negative) testdata/gc/fixedbugs/issue4232.go:37:8
 [PASS errorcheck] "invalid slice index -1|index out of bounds": invalid slice index -1 (index must be non-negative) testdata/gc/fixedbugs/issue4232.go:38:9
-[FAIL errorcheck: missing error] "invalid string index 10|index out of bounds" testdata/gc/fixedbugs/issue4232.go:39:13
-[FAIL errorcheck: missing error] "invalid slice index 12|index out of bounds" testdata/gc/fixedbugs/issue4232.go:42:25
-[FAIL errorcheck: missing error] "invalid slice index 11|index out of bounds" testdata/gc/fixedbugs/issue4232.go:43:25
+[PASS errorcheck] "invalid string index 10|index out of bounds": invalid string index 10 (out of bounds for 10-byte string) testdata/gc/fixedbugs/issue4232.go:39:8
+[PASS errorcheck] "invalid slice index 12|index out of bounds": invalid slice index 12 (out of bounds for 10-byte string) testdata/gc/fixedbugs/issue4232.go:42:10
+[PASS errorcheck] "invalid slice index 11|index out of bounds": invalid slice index 11 (out of bounds for 10-byte string) testdata/gc/fixedbugs/issue4232.go:43:8
 [PASS errorcheck] "overflows int" "invalid slice index 1 << 100|index out of bounds": constant 1267650600228229401496703205376 overflows int testdata/gc/fixedbugs/issue4232.go:44:8
 [PASS errorcheck] "invalid string index -1|index out of bounds": invalid string index -1 (index must be non-negative) testdata/gc/fixedbugs/issue4232.go:47:8
 [PASS errorcheck] "invalid slice index -1|index out of bounds": invalid slice index -1 (index must be non-negative) testdata/gc/fixedbugs/issue4232.go:48:8

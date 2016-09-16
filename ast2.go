@@ -2495,7 +2495,7 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 			// · a[x] is the array element at index x and the type
 			//   of a[x] is the element type of A
 			if constX != nil {
-				if i, j := constX.(*intConst).val, pt.Len(); i >= j {
+				if i, j := constX.int(), pt.Len(); i >= j {
 					if ctx.err(n.Expression, "invalid array index %d (out of bounds for %d-element array)", i, j) {
 						return true
 					}
@@ -2529,6 +2529,16 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 			//
 			// · a[x] may not be assigned to
 			switch pv.Kind() {
+			case ConstValue:
+				if constX != nil {
+					len := pv.Const().(*stringConst).val.len()
+					if x := constX.int(); x >= int64(len) {
+						if ctx.err(n.Expression, "invalid string index %d (out of bounds for %d-byte string)", x, len) {
+							return true
+						}
+					}
+				}
+				fallthrough
 			case RuntimeValue:
 				n.Value = newRuntimeValue(ctx.uint8Type)
 			default:
@@ -2619,9 +2629,35 @@ func (n *PrimaryExpression) check(ctx *context) (stop bool) {
 		}
 		l := n.checkIndex(ctx, n.ExpressionOpt, "slice")
 		h := n.checkIndex(ctx, n.ExpressionOpt2, "slice")
-		if l != nil && h != nil {
-			if l.(*intConst).val > h.(*intConst).val {
-				todo(n, true) // l >= h
+		if l != nil && h != nil && l.int() > h.int() {
+			todo(n.ExpressionOpt, true) // l >= h
+			return
+		}
+
+		switch v.Type().Kind() {
+		case Array:
+			elems := v.Type().Len()
+			if l != nil && l.int() > elems {
+				return ctx.err(n.ExpressionOpt, "invalid slice index %d (out of bounds for %d-element array)", l.int(), elems)
+			}
+			if h != nil && h.int() > elems {
+				return ctx.err(n.ExpressionOpt2, "invalid slice index %d (out of bounds for %d-element array)", h.int(), elems)
+			}
+		case String:
+			if v.Kind() != ConstValue {
+				break
+			}
+
+			len := v.Const().(*stringConst).val.len()
+			if l != nil && l.int() > int64(len) {
+				if ctx.err(n.ExpressionOpt, "invalid slice index %d (out of bounds for %d-byte string)", l.int(), len) {
+					return true
+				}
+			}
+			if h != nil && h.int() > int64(len) {
+				if ctx.err(n.ExpressionOpt2, "invalid slice index %d (out of bounds for %d-byte string)", h.int(), len) {
+					return true
+				}
 			}
 		}
 	case 8: // PrimaryExpression Call
