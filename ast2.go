@@ -2162,7 +2162,7 @@ func (n *PrimaryExpression) checkIndex(ctx *context, o Node, typ string) Const {
 	case ConstValue:
 		c := v.Const()
 		if !c.Integral() {
-			todo(n, true) // non-integer index
+			ctx.err(o, "non-integer %s index %s", typ, c)
 			return nil
 		}
 
