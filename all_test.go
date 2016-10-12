@@ -9,51 +9,44 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"go/build"
 	"go/scanner"
-	"io"
-	"math"
+	"go/token"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"runtime"
-	"runtime/debug"
 	"sort"
 	"strings"
-	"sync"
 	"testing"
 
-	"github.com/cznic/sortutil"
-	"github.com/cznic/xc"
+	"github.com/cznic/lex"
+	dfa "github.com/cznic/lexer"
+	"github.com/cznic/y"
+	"github.com/edsrzf/mmap-go"
 )
-
-var dbgMu sync.Mutex
 
 func caller(s string, va ...interface{}) {
 	if s == "" {
 		s = strings.Repeat("%v ", len(va))
 	}
 	_, fn, fl, _ := runtime.Caller(2)
-	fmt.Fprintf(os.Stderr, "caller: %s:%d: ", path.Base(fn), fl)
+	fmt.Fprintf(os.Stderr, "// caller: %s:%d: ", path.Base(fn), fl)
 	fmt.Fprintf(os.Stderr, s, va...)
 	fmt.Fprintln(os.Stderr)
 	_, fn, fl, _ = runtime.Caller(1)
-	fmt.Fprintf(os.Stderr, "\tcallee: %s:%d: ", path.Base(fn), fl)
+	fmt.Fprintf(os.Stderr, "// \tcallee: %s:%d: ", path.Base(fn), fl)
 	fmt.Fprintln(os.Stderr)
 	os.Stderr.Sync()
 }
 
-func callers() []byte { return debug.Stack() }
-
 func dbg(s string, va ...interface{}) {
-	dbgMu.Lock()
-	defer dbgMu.Unlock()
-
 	if s == "" {
 		s = strings.Repeat("%v ", len(va))
 	}
 	_, fn, fl, _ := runtime.Caller(1)
-	fmt.Fprintf(os.Stderr, "dbg %s:%d: ", path.Base(fn), fl)
+	fmt.Fprintf(os.Stderr, "// dbg %s:%d: ", path.Base(fn), fl)
 	fmt.Fprintf(os.Stderr, s, va...)
 	fmt.Fprintln(os.Stderr)
 	os.Stderr.Sync()
@@ -61,157 +54,141 @@ func dbg(s string, va ...interface{}) {
 
 func TODO(...interface{}) string { //TODOOK
 	_, fn, fl, _ := runtime.Caller(1)
-	return fmt.Sprintf("TODO: %s:%d:\n", path.Base(fn), fl) //TODOOK
+	return fmt.Sprintf("// TODO: %s:%d:\n", path.Base(fn), fl) //TODOOK
 }
 
 func use(...interface{}) {}
 
 func init() {
-	use(caller, callers, dbg, TODO) //TODOOK
-	flag.IntVar(&yyDebug, "yydebug", 0, "")
-	flag.BoolVar(&todoPanic, "todo", false, "")      //TODOOK
-	flag.BoolVar(&todoTrace, "tracetodo", false, "") //TODOOK
-	flag.BoolVar(&todoTrace, "todotrace", false, "") //TODOOK
-
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		panic("internal error")
-	}
-
-	gopaths := filepath.SplitList(os.Getenv("GOPATH"))
-	for _, v := range gopaths {
-		gp := filepath.Join(v, "src")
-		path, err := filepath.Rel(gp, file)
-		if err != nil {
-			continue
-		}
-
-		selfImportPath = filepath.Dir(path)
-		return
-	}
-
-	panic("internal error")
+	use(caller, dbg, TODO, (*parser).todo) //TODOOK
 }
 
 // ============================================================================
 
-var (
-	testTags = []string{
-		"go1.1",
-		"go1.2",
-		"go1.3",
-		"go1.4",
-		"go1.5",
-		"go1.6",
-		"go1.7",
-	}
-
-	oRE            = flag.String("re", "", "regexp")
-	selfImportPath string
+const (
+	lfile  = "testdata/scanner/scanner.l"
+	yfile  = "testdata/parser/y/parser.y"
+	ycover = "testdata/parser/ycover.go"
 )
 
-func errStr(err error) string {
-	var b bytes.Buffer
-	scanner.PrintError(&b, err)
-	return b.String()
+type yParser struct {
+	*y.Parser
+	terminals []*y.Symbol
+	tok2sym   map[token.Token]*y.Symbol
 }
 
-func exampleAST(exampleRule int, src string) interface{} {
-	t := &testContext{exampleRule: exampleRule}
-	c, err := newContext("", "amd64", "", nil, nil, addTestContext(t), EnableGenerics())
-	if err != nil {
-		return err
-	}
+var (
+	oN = flag.Int("N", -1, "")
+	_  = flag.String("out", "", "where to put y.output")
+	_  = flag.Bool("closures", false, "closures")
 
-	s := fmt.Sprintf("example%v", exampleRule)
-	c.newPackage(s, s).loadString(s+".go", src)
-	return t.exampleAST
-}
-
-func disableNoBuildableFilesError() Opt {
-	return func(c *Context) error {
-		c.options.disableNoBuildableFilesError = true
-		return nil
-	}
-}
-
-func addTestContext(t *testContext) Opt {
-	return func(c *Context) error {
-		c.test = t
-		return nil
-	}
-}
-
-func (c *Context) packageNameFromFile(fname string) (string, error) {
-	c.clearErrors()
-	p := c.newPackage("", "")
-	p.parseOnlyName = true
-	err := p.loadFile(fname)
-	if err := c.errors(err); err != nil {
-		return "", err
-	}
-
-	return p.Name, nil
-}
-
-func (c *Context) collectPackages(ip string) (pl []string, pm map[string][]string, err error) {
-	dir0, err := c.DirectoryFromImportPath(selfImportPath)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	dir, err := c.DirectoryFromImportPath(ip)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	matches, err := filepath.Glob(filepath.Join(dir, "*.go"))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	pm = map[string][]string{}
-	m := map[string]bool{}
-	for _, v := range matches {
-		nm, err := c.packageNameFromFile(v)
+	lexL = func() *lex.L {
+		lf, err := os.Open(lfile)
 		if err != nil {
-			return nil, nil, err
+			panic(err)
 		}
 
-		if !m[nm] {
-			pl = append(pl, nm)
-			m[nm] = true
+		l, err := lex.NewL(lfile, bufio.NewReader(lf), false, false)
+		if err != nil {
+			panic(err)
 		}
-		pm[nm] = append(pm[nm], v[len(dir0)+1:])
-	}
-	sort.Strings(pl)
-	for _, v := range pm {
-		sort.Strings(v)
-	}
-	if len(pl) == 1 {
-		return pl, pm, nil
-	}
 
-	pl = pl[:0]
-	pm2 := map[string][]string{}
-	for _, v := range pm {
-		if len(v) != 1 {
-			panic("internal error")
+		return l
+	}()
+
+	yp0 = func() *yParser {
+		var closures bool
+		var fn string
+		for i, v := range os.Args {
+			if i == 0 {
+				continue
+			}
+
+			switch v {
+			case "-closures":
+				closures = true
+			case "-out":
+				fn = os.Args[i+1]
+			}
 		}
-		ip := filepath.Join(selfImportPath, v[0])
-		ip = ip[:len(ip)-len(".go")]
-		pl = append(pl, ip)
-		pm2[ip] = v
-	}
-	return pl, pm2, nil
-}
+		fs := token.NewFileSet()
+		var out bytes.Buffer
+		p, err := y.ProcessFile(fs, yfile, &y.Options{
+			Closures:  closures,
+			Reducible: true,
+			Report:    &out,
+		})
+		if fn != "" {
+			if err := ioutil.WriteFile(fn, out.Bytes(), 0644); err != nil {
+				panic(err)
+			}
+		}
 
-func testLoad(t testing.TB) {
-	var importPaths []string
-	root := filepath.Join(runtime.GOROOT(), "src")
-	if err := filepath.Walk(
-		root,
-		func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			panic(err)
+		}
+
+		m := make(map[token.Token]*y.Symbol, len(p.Syms))
+		for k, v := range p.Syms {
+			if !v.IsTerminal || k == "BODY" || k[0] == '_' {
+				continue
+			}
+
+			switch {
+			case k[0] >= 'A' && k[0] <= 'Z':
+				if tok, ok := str2token[k]; ok {
+					m[tok] = v
+					break
+				}
+
+				l := v.LiteralString
+				if l == "" {
+					panic(fmt.Errorf("no token for %q", k))
+				}
+
+				if tok, ok := str2token[l[1:len(l)-1]]; ok {
+					m[tok] = v
+					break
+				}
+
+				panic(k)
+			case k[0] == '\'':
+				tok := str2token[k[1:2]]
+				m[tok] = v
+			default:
+			}
+		}
+		m[token.EOF] = p.Syms["$end"]
+		m[tokenBODY] = p.Syms["BODY"]
+		var t []*y.Symbol
+		for _, v := range p.Syms {
+			if v.IsTerminal {
+				t = append(t, v)
+			}
+		}
+		return &yParser{
+			Parser:    p,
+			terminals: t,
+			tok2sym:   m,
+		}
+	}()
+
+	str2token = func() map[string]token.Token {
+		m := map[string]token.Token{}
+		for i := token.IDENT; i <= maxTokenToken; i++ {
+			s := strings.ToUpper(i.String())
+			if _, ok := m[s]; ok {
+				panic(fmt.Errorf("internal error %q", s))
+			}
+
+			m[s] = i
+		}
+		m["ILLEGAL"] = token.ILLEGAL
+		return m
+	}()
+
+	gorootTestFiles = func() (r []string) {
+		if err := filepath.Walk(filepath.Join(runtime.GOROOT(), "src"), func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
@@ -220,320 +197,903 @@ func testLoad(t testing.TB) {
 				return nil
 			}
 
-			if path == root {
-				return nil
-			}
-
-			if b := filepath.Base(path); b == "testdata" ||
-				b == "builtin" ||
-				strings.HasPrefix(b, ".") {
+			if base := filepath.Base(path); strings.HasPrefix(base, ".") ||
+				strings.HasPrefix(base, "_") ||
+				base == "testdata" {
 				return filepath.SkipDir
 			}
 
-			matches, err := filepath.Glob(filepath.Join(path, "*.go"))
+			p, err := build.ImportDir(path, 0)
 			if err != nil {
+				if _, ok := err.(*build.NoGoError); ok {
+					return nil
+				}
+
 				return err
 			}
 
-			if len(matches) != 0 {
-				importPaths = append(importPaths, path[len(root)+1:])
+			for _, v := range p.GoFiles {
+				r = append(r, filepath.Join(p.Dir, v))
+			}
+			for _, v := range p.TestGoFiles {
+				r = append(r, filepath.Join(p.Dir, v))
 			}
 			return nil
-
-		},
-	); err != nil {
-		t.Fatal(err)
-	}
-
-	importPaths = append(importPaths, selfImportPath)
-	sort.Strings(importPaths)
-	m, err := LoadPackages(
-		runtime.GOOS,
-		runtime.GOARCH,
-		runtime.GOROOT(),
-		filepath.SplitList(os.Getenv("GOPATH")),
-		testTags,
-		importPaths,
-		disableNoBuildableFilesError(),
-	)
-	if _, ok := t.(*testing.T); ok {
-		t.Log(len(m))
-		if err != nil {
-			t.Fatal(errStr(err))
-		}
-	}
-}
-
-func TestLoad(t *testing.T) {
-	testLoad(t)
-}
-
-func BenchmarkLoad(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		testLoad(b)
-	}
-}
-
-func BenchmarkHello(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		LoadPackage(
-			runtime.GOOS,
-			runtime.GOARCH,
-			runtime.GOROOT(),
-			"",
-			filepath.SplitList(os.Getenv("GOPATH")),
-			testTags,
-			[]string{"testdata/hello.go"},
-		)
-	}
-}
-
-func Test(t *testing.T) {
-	f, err := os.Create("test.log")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer f.Close()
-
-	logw := bufio.NewWriter(f)
-
-	defer logw.Flush()
-
-	c, err := NewContext(
-		runtime.GOOS,
-		runtime.GOARCH,
-		runtime.GOROOT(),
-		filepath.SplitList(os.Getenv("GOPATH")),
-		testTags,
-		EnableGenerics(),
-		ErrLimit(math.MaxInt32),
-		addTestContext(&testContext{}),
-		disableNoBuildableFilesError(),
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := filepath.Walk("testdata", func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
+		}); err != nil {
+			panic(err)
 		}
 
-		if info.IsDir() {
-			if strings.HasSuffix(path, ".dir") {
-				return filepath.SkipDir
+		return r[:len(r):len(r)]
+	}()
+
+	stdTestFiles = func() (r []string) {
+		cmd := filepath.Join(runtime.GOROOT(), "src", "cmd")
+		for _, v := range gorootTestFiles {
+			if !strings.Contains(v, cmd) && !strings.HasSuffix(v, "_test.go") {
+				r = append(r, v)
 			}
+		}
+		return r[:len(r):len(r)]
+	}()
+)
 
-			return nil
+func errString(err error) string {
+	var b bytes.Buffer
+	scanner.PrintError(&b, err)
+	return strings.TrimSpace(b.String())
+}
+
+func testScannerStates(t *testing.T) {
+	mn := len(lexL.Dfa)
+	mn0 := mn
+	m := make([]bool, mn+1) // 1-based state.Index.
+	fs := token.NewFileSet()
+	fs2 := token.NewFileSet()
+	var ss scanner.Scanner
+	l := newLexer(nil, nil)
+	nerr := 0
+
+	var cases, sum int
+	var f func(string, *dfa.NfaState)
+	f = func(prefix string, s *dfa.NfaState) {
+		if nerr >= 10 {
+			return
 		}
 
-		if re := *oRE; re != "" {
-			ok, err := regexp.MatchString(re, path)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if !ok {
-				return nil
-			}
-
-			t.Log(path)
+		if m[s.Index] {
+			return
 		}
 
-		f, err := os.Open(path)
-		if err != nil {
-			return err
+		m[s.Index] = true
+
+		if len(s.NonConsuming) != 0 {
+			panic("internal error")
 		}
 
-		defer f.Close()
-
-		c.test.errChecks = c.test.errChecks[:0]
-		sc := bufio.NewScanner(f)
-		for sc.Scan() {
-			line := strings.TrimSpace(sc.Text())
-			switch {
-			case strings.HasPrefix(line, "//"):
-				switch line = strings.TrimSpace(line[2:]); {
-				case line == "skip":
-					return nil
-				case strings.HasPrefix(line, "+build"):
-					// nop
-				case
-					line == "build",
-					line == "cmpout",
-					line == "compile",
-					line == "compiledir",
-					line == "errorcheckoutput",
-					line == "run",
-					line == "rundir",
-					line == "runoutput",
-					line == "true",
-					strings.HasPrefix(line, "$"),
-					strings.HasPrefix(line, "errorcheckoutput "),
-					strings.HasPrefix(line, "run "),
-					strings.HasPrefix(line, "runoutput "):
-
-					// N/A for a front end.
-				case
-					strings.HasPrefix(line, "errorcheck "):
-					fmt.Fprintf(logw, "[TODO %q] %s\n", line, path) //TODOOK
-					return nil
-				case line == "errorcheck":
-					testErrorcheck(t, c, f.Name(), logw)
-				case line == "errorcheckdir":
-					testErrorcheckdir(t, c, f.Name(), logw)
+		next := make([]*dfa.NfaState, classNext)
+		for _, e := range s.Consuming {
+			switch x := e.(type) {
+			case *dfa.RangesEdge:
+				if x.Invert {
+					panic("internal error")
 				}
-			case line == "":
-				return nil
+
+				for _, v := range x.Ranges.R16 {
+					for c := v.Lo; c <= v.Hi; c += v.Stride {
+						if c >= classNext {
+							continue
+						}
+
+						if next[c] != nil {
+							panic("internal error")
+						}
+
+						next[c] = x.Targ
+					}
+				}
+				for _, v := range x.Ranges.R32 {
+					for c := v.Lo; c <= v.Hi; c += v.Stride {
+						if c >= classNext {
+							continue
+						}
+
+						if next[c] != nil {
+							panic("internal error")
+						}
+
+						next[c] = x.Targ
+					}
+				}
+			case *dfa.RuneEdge:
+				c := x.Rune
+				if next[c] != nil {
+					panic("internal error")
+				}
+
+				next[c] = x.Targ
+			default:
+				panic(fmt.Errorf("internal error: %T", x))
 			}
 		}
-		return sc.Err()
-	}); err != nil {
-		t.Fatal(err)
-	}
-}
+		for c, nx := range next {
+			iCase := cases
+			cases++
+			src := prefix
+			switch c {
+			case classEOF:
+				// nop
+			case classNonASCII:
+				src += "á"
+			default:
+				src += string(c)
+			}
 
-func testErrorcheck(t *testing.T, c *Context, fname string, logw io.Writer) {
-	ip := filepath.Join(selfImportPath, filepath.Dir(fname))
-	_, err := c.loadPackage(ip, []string{fname})
-	errorCheckResults(t, c.test.errChecks, err, fname, logw)
-}
+			tf := fs.AddFile("", -1, len(src))
+			tf2 := fs2.AddFile("", -1, len(src))
+			errCnt := 0
+			b := []byte(src)
+			var errs, errs2 scanner.ErrorList
+			l.init(tf, b)
+			l.errHandler = func(pos token.Pos, msg string, args ...interface{}) {
+				errCnt++
+				errs.Add(tf.Position(pos), fmt.Sprintf(msg, args...))
+			}
+			ss.Init(tf2, b, func(pos token.Position, msg string) {
+				errs2.Add(pos, msg)
+			}, 0)
+			sum += len(src)
+			for i := 0; nerr <= 10; i++ {
+				errs = nil
+				errs2 = nil
+				l.errorCount = 0
+				ss.ErrorCount = 0
+				ofs, tok := l.scan()
+				pos := tf.Pos(ofs)
+				lit := string(l.lit)
+				pos2, tok2, lit2 := ss.Scan()
+				if n := *oN; n < 0 || n == iCase {
+					if g, e := l.errorCount != 0, ss.ErrorCount != 0; g != e {
+						nerr++
+						t.Errorf(
+							"%6d: errors[%d] %q(|% x|), %v %v\nall got\n%s\nall exp\n%s",
+							iCase, i, src, src, l.errorCount, ss.ErrorCount, errString(errs), errString(errs2),
+						)
+					}
+					if g, e := pos, pos2; g != e {
+						nerr++
+						t.Errorf(
+							"%6d: pos[%d] %q(|% x|), %s(%v) %s(%v)",
+							iCase, i, src, src, tf.Position(g), g, tf2.Position(e), e,
+						)
+					}
+					if g, e := tok, tok2; g != e {
+						nerr++
+						t.Errorf("%6d: tok[%d] %q(|% x|) %s %s", iCase, i, src, src, g, e)
+					}
+					if l.errorCount+ss.ErrorCount != 0 || tok == token.ILLEGAL {
+						continue
+					}
 
-func testErrorcheckdir(t *testing.T, c *Context, fname string, logw io.Writer) {
-	const suff = ".go"
-	if !strings.HasSuffix(fname, suff) {
-		panic("internal error")
-	}
+					if lit2 == "" && tok2 != token.EOF {
+						lit2 = tok2.String()
+					}
+					if g, e := lit, lit2; g != e {
+						nerr++
+						t.Errorf("%6d: lit[%d] %q(|% x|), %q(|% x|) %q(|% x|)", iCase, i, src, src, g, g, e, e)
+					}
+					if nerr >= 10 {
+						return
+					}
+				}
+				if tok == token.EOF || tok2 == token.EOF {
+					break
+				}
+			}
+			if c == classEOF || nx == nil {
+				continue
+			}
 
-	ip := filepath.Join(selfImportPath, fname[:len(fname)-len(suff)]+".dir")
-	pl, pm, err := c.collectPackages(ip)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(pl) == 1 {
-		_, err := c.loadPackage(ip, pm[pl[0]])
-		errorCheckResults(t, c.test.errChecks, err, fname, logw)
-		return
-	}
-
-	c.test.pkgMap = pm
-	_, err = c.loadPackages(pl)
-	errorCheckResults(t, c.test.errChecks, err, fname, logw)
-}
-
-func qmsg(s string) string {
-	return strings.Replace(strings.Replace(s, "\t", "\\t", -1), "\n", "\\n", -1)
-}
-
-var errCheckPatterns = regexp.MustCompile(`"([^"]*)"`)
-
-func errorCheckResults(t *testing.T, checks []xc.Token, err error, fname string, logw io.Writer) {
-	if len(checks) == 0 {
-		panic("internal error")
-	}
-
-	if err != nil {
-		err.(scanner.ErrorList).Sort()
-	}
-	if *oRE != "" {
-		for _, v := range checks {
-			t.Logf("%s: %s", xc.FileSet.PositionFor(v.Pos(), false), dict.S(v.Val))
+			f(src, nx)
 		}
+		mn--
+	}
+	f("", lexL.Dfa[0])
+	if mn != 0 {
+		t.Errorf("states covered: %d/%d", mn0-mn, mn0)
+	} else {
+		t.Logf("states covered: %d/%d", mn0-mn, mn0)
+	}
+	t.Logf("test cases %v, total src len %v", cases, sum)
+}
+
+func testScannerBugs(t *testing.T) {
+	type toks []struct {
+		ofs int
+		pos string
+		tok token.Token
+		lit string
+	}
+	fs := token.NewFileSet()
+	l := newLexer(nil, nil)
+	n := *oN
+	nerr := 0
+	for i, v := range []struct {
+		src  string
+		toks toks
+	}{
+		{" (", toks{{1, "1:2", token.LPAREN, "("}}},
+		{" (\n", toks{{1, "1:2", token.LPAREN, "("}}},
+		{" z ", toks{{1, "1:2", token.IDENT, "z"}, {3, "1:4", token.SEMICOLON, "\n"}}},
+		{" z", toks{{1, "1:2", token.IDENT, "z"}, {2, "1:3", token.SEMICOLON, "\n"}}},
+		{" za ", toks{{1, "1:2", token.IDENT, "za"}, {4, "1:5", token.SEMICOLON, "\n"}}},
+		{" za", toks{{1, "1:2", token.IDENT, "za"}, {3, "1:4", token.SEMICOLON, "\n"}}},
+		{" « ", toks{{1, "1:2", tokenLTLT, "«"}}},
+		{" » ", toks{{1, "1:2", tokenGTGT, "»"}}},
+		{"", nil},
+		{"'\\U00000000'!", toks{{0, "1:1", token.CHAR, "'\\U00000000'"}, {12, "1:13", token.NOT, "!"}}},
+		{"'\\U00000000'", toks{{0, "1:1", token.CHAR, "'\\U00000000'"}, {12, "1:13", token.SEMICOLON, "\n"}}},
+		{"'\\u0000'!", toks{{0, "1:1", token.CHAR, "'\\u0000'"}, {8, "1:9", token.NOT, "!"}}},
+		{"'\\u0000'", toks{{0, "1:1", token.CHAR, "'\\u0000'"}, {8, "1:9", token.SEMICOLON, "\n"}}},
+		{"'\\x00'!", toks{{0, "1:1", token.CHAR, "'\\x00'"}, {6, "1:7", token.NOT, "!"}}},
+		{"'\\x00'", toks{{0, "1:1", token.CHAR, "'\\x00'"}, {6, "1:7", token.SEMICOLON, "\n"}}},
+		{"( ", toks{{0, "1:1", token.LPAREN, "("}}},
+		{"(", toks{{0, "1:1", token.LPAREN, "("}}},
+		{"/***/func", toks{{5, "1:6", token.FUNC, "func"}}},
+		{"/**/func", toks{{4, "1:5", token.FUNC, "func"}}},
+		{"/*\n */\nfunc ", toks{{7, "3:1", token.FUNC, "func"}}},
+		{"/*\n *\n */\nfunc ", toks{{10, "4:1", token.FUNC, "func"}}},
+		{"/*\n*/\nfunc ", toks{{6, "3:1", token.FUNC, "func"}}},
+		{"/*\n\n*/\nfunc ", toks{{7, "4:1", token.FUNC, "func"}}},
+		{"//", nil},
+		{"//\n", nil},
+		{"//\n//", nil},
+		{"//\n//\n", nil},
+		{"//\n//\n@", toks{{6, "3:1", token.ILLEGAL, "@"}}},
+		{"//\n//\nz", toks{{6, "3:1", token.IDENT, "z"}, {7, "3:2", token.SEMICOLON, "\n"}}},
+		{"//\n//\nz1", toks{{6, "3:1", token.IDENT, "z1"}, {8, "3:3", token.SEMICOLON, "\n"}}},
+		{"//\n@", toks{{3, "2:1", token.ILLEGAL, "@"}}},
+		{"//\nz", toks{{3, "2:1", token.IDENT, "z"}, {4, "2:2", token.SEMICOLON, "\n"}}},
+		{"//\nz1", toks{{3, "2:1", token.IDENT, "z1"}, {5, "2:3", token.SEMICOLON, "\n"}}},
+		{";\xf0;", toks{{0, "1:1", token.SEMICOLON, ";"}, {1, "1:2", token.IDENT, "\xf0"}, {2, "1:3", token.SEMICOLON, ";"}}},
+		{"\"\\U00000000\"!", toks{{0, "1:1", token.STRING, "\"\\U00000000\""}, {12, "1:13", token.NOT, "!"}}},
+		{"\"\\U00000000\"", toks{{0, "1:1", token.STRING, "\"\\U00000000\""}, {12, "1:13", token.SEMICOLON, "\n"}}},
+		{"\"\\u0000\"!", toks{{0, "1:1", token.STRING, "\"\\u0000\""}, {8, "1:9", token.NOT, "!"}}},
+		{"\"\\u0000\"", toks{{0, "1:1", token.STRING, "\"\\u0000\""}, {8, "1:9", token.SEMICOLON, "\n"}}},
+		{"\"\\x00\"!", toks{{0, "1:1", token.STRING, "\"\\x00\""}, {6, "1:7", token.NOT, "!"}}},
+		{"\"\\x00\"", toks{{0, "1:1", token.STRING, "\"\\x00\""}, {6, "1:7", token.SEMICOLON, "\n"}}},
+		{"\xf0", toks{{0, "1:1", token.IDENT, "\xf0"}, {1, "1:2", token.SEMICOLON, "\n"}}},
+		{"\xf0;", toks{{0, "1:1", token.IDENT, "\xf0"}, {1, "1:2", token.SEMICOLON, ";"}}},
+		{"a/**/", toks{{0, "1:1", token.IDENT, "a"}, {1, "1:2", token.SEMICOLON, "\n"}}},
+		{"a/**//**/", toks{{0, "1:1", token.IDENT, "a"}, {1, "1:2", token.SEMICOLON, "\n"}}},
+		{"a/*\n*/", toks{{0, "1:1", token.IDENT, "a"}, {1, "1:2", token.SEMICOLON, "\n"}}},
+		{"a/*\n*//**/", toks{{0, "1:1", token.IDENT, "a"}, {1, "1:2", token.SEMICOLON, "\n"}}},
+		{"a//", toks{{0, "1:1", token.IDENT, "a"}, {1, "1:2", token.SEMICOLON, "\n"}}},
+		{"a//\n", toks{{0, "1:1", token.IDENT, "a"}, {1, "1:2", token.SEMICOLON, "\n"}}},
+		{"d/*\\\n*/0", toks{{0, "1:1", token.IDENT, "d"}, {1, "1:2", token.SEMICOLON, "\n"}, {7, "2:3", token.INT, "0"}, {8, "2:4", token.SEMICOLON, "\n"}}},
+		{"import ( ", toks{{0, "1:1", token.IMPORT, "import"}, {7, "1:8", token.LPAREN, "("}}},
+		{"import (", toks{{0, "1:1", token.IMPORT, "import"}, {7, "1:8", token.LPAREN, "("}}},
+		{"import (\n", toks{{0, "1:1", token.IMPORT, "import"}, {7, "1:8", token.LPAREN, "("}}},
+		{"import (\n\t", toks{{0, "1:1", token.IMPORT, "import"}, {7, "1:8", token.LPAREN, "("}}},
+		{"z ", toks{{0, "1:1", token.IDENT, "z"}, {2, "1:3", token.SEMICOLON, "\n"}}},
+		{"z w", toks{{0, "1:1", token.IDENT, "z"}, {2, "1:3", token.IDENT, "w"}, {3, "1:4", token.SEMICOLON, "\n"}}},
+		{"z", toks{{0, "1:1", token.IDENT, "z"}, {1, "1:2", token.SEMICOLON, "\n"}}},
+		{"za ", toks{{0, "1:1", token.IDENT, "za"}, {3, "1:4", token.SEMICOLON, "\n"}}},
+		{"za wa", toks{{0, "1:1", token.IDENT, "za"}, {3, "1:4", token.IDENT, "wa"}, {5, "1:6", token.SEMICOLON, "\n"}}},
+		{"za", toks{{0, "1:1", token.IDENT, "za"}, {2, "1:3", token.SEMICOLON, "\n"}}},
+		{"«", toks{{0, "1:1", tokenLTLT, "«"}}},
+		{"»", toks{{0, "1:1", tokenGTGT, "»"}}},
+	} {
+		if n >= 0 && i != n {
+			continue
+		}
+
+		src := v.src
+		l.init(fs.AddFile("", -1, len(src)), []byte(src))
+		for j, v := range v.toks {
+			ofs, tok := l.scan()
+			if g, e := ofs, v.ofs; g != e {
+				nerr++
+				t.Errorf("%v ofs[%d] %q(|% x|) %v %v", i, j, src, src, g, e)
+			}
+			if g, e := l.f.Position(l.f.Pos(ofs)).String(), v.pos; g != e {
+				nerr++
+				t.Errorf("%v pos[%d] %q(|% x|) %q %q", i, j, src, src, g, e)
+			}
+			if g, e := tok, v.tok; g != e {
+				nerr++
+				t.Errorf("%v tok[%d] %q(|% x|) %q %q", i, j, src, src, g, e)
+			}
+			if g, e := string(l.lit), v.lit; g != e {
+				nerr++
+				t.Errorf("%v lit[%d] %q(|% x|) %q(|% x|) %q(|% x|)", i, j, src, src, g, g, e, e)
+			}
+			if nerr >= 10 {
+				return
+			}
+		}
+		ofs, tok := l.scan()
+		if g, e := tok, token.EOF; g != e {
+			nerr++
+			t.Errorf("%v tok %q(|% x|) %q %q", i, src, src, g, e)
+		}
+		if g, e := ofs, len(src); g != e {
+			nerr++
+			t.Errorf("%v ofs %q(|% x|) %v %v", i, src, src, g, e)
+		}
+		if nerr >= 10 {
+			return
+		}
+	}
+}
+
+func testScanner(t *testing.T, paths []string) {
+	fs := token.NewFileSet()
+	var s scanner.Scanner
+	l := newLexer(nil, nil)
+	sum := 0
+	toks := 0
+	files := 0
+	for _, path := range paths {
+		src, err := ioutil.ReadFile(path)
 		if err != nil {
-			t.Logf("FAIL\n%s", errStr(err))
+			t.Fatal(err)
+		}
+
+		sum += len(src)
+		f := fs.AddFile(path, -1, len(src))
+		f2 := fs.AddFile(path, -1, len(src))
+		var se scanner.ErrorList
+		l.init(f, src)
+		l.errHandler = func(pos token.Pos, msg string, arg ...interface{}) {
+			se.Add(l.f.Position(pos), fmt.Sprintf(msg, arg...))
+		}
+		s.Init(f2, src, nil, 0)
+		files++
+		for {
+			ofs, gt := l.scan()
+			toks++
+			glit := string(l.lit)
+			pos, et, lit := s.Scan()
+			position := f2.Position(pos)
+			if g, e := l.f.Position(l.f.Pos(ofs)), position; g != e {
+				t.Fatalf("%s: position mismatch, expected %s", g, e)
+			}
+
+			if l.errorCount != 0 {
+				t.Fatal(se)
+			}
+
+			if gt == token.EOF {
+				if et != token.EOF {
+					t.Fatalf("%s: unexpected eof", position)
+				}
+
+				break
+			}
+
+			if g, e := gt, et; g != e {
+				t.Fatalf("%s: token mismatch %q %q", position, g, e)
+			}
+
+			if lit == "" {
+				lit = gt.String()
+			}
+			if g, e := glit, lit; g != e {
+				t.Fatalf("%s: literal mismatch %q %q", position, g, e)
+			}
 		}
 	}
-	got := map[int][]*scanner.Error{}
-	var gota []int
-	if err != nil {
-		err := err.(scanner.ErrorList)
-		for _, v := range err {
-			p := filepath.ToSlash(v.Pos.Filename)
-			if !filepath.IsAbs(p) {
-				line := v.Pos.Line
-				got[line] = append(got[line], v)
-				gota = append(gota, line)
+	t.Logf("files: %v, toks: %v, bytes %v", files, toks, sum)
+}
+
+func TestScanner(t *testing.T) {
+	_ = t.Run("States", testScannerStates) &&
+		t.Run("Bugs", testScannerBugs) &&
+		t.Run("GOROOT", func(*testing.T) { testScanner(t, gorootTestFiles) })
+}
+
+func BenchmarkScanner(b *testing.B) {
+	fs := token.NewFileSet()
+	l := newLexer(nil, nil)
+
+	b.Run("File", func(b *testing.B) {
+		src, err := ioutil.ReadFile(filepath.Join(runtime.GOROOT(), "src", "go", "scanner", "scanner.go"))
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		f := fs.AddFile("scanner.go", -1, len(src))
+		b.SetBytes(int64(len(src)))
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			l.init(f, src)
+			for {
+				_, tok := l.scan()
+				if tok == token.EOF {
+					break
+				}
 			}
 		}
-	}
-	gota = gota[:sortutil.Dedupe(sort.IntSlice(gota))]
+	})
 
-	expect := map[int]xc.Token{}
-	for _, v := range checks {
-		expect[xc.FileSet.PositionFor(v.Pos(), false).Line] = v
-	}
-
-	var a scanner.ErrorList
-	var fail bool
-outer:
-	for _, line := range gota {
-		matched := false
-		var g0, g *scanner.Error
-		var e xc.Token
-	inner:
-		for _, g = range got[line] {
-			if g0 == nil {
-				g0 = g
-			}
-			var ok bool
-			if e, ok = expect[line]; !ok {
-				a = append(a, &scanner.Error{Pos: g.Pos, Msg: fmt.Sprintf("[FAIL errorcheck: extra error] %s", qmsg(g.Msg))})
-				fail = true
-				continue outer
-			}
-
-			for _, v := range errCheckPatterns.FindAllSubmatch(e.S(), -1) {
-				re := v[1]
-				ok, err := regexp.MatchString(string(re), strings.SplitN(g.Error(), ": ", 2)[1])
+	b.Run("Std", func(b *testing.B) {
+		b.ResetTimer()
+		var sum int
+		for i := 0; i < b.N; i++ {
+			sum = 0
+			for _, v := range stdTestFiles {
+				src, err := ioutil.ReadFile(v)
 				if err != nil {
-					t.Fatal(err)
+					b.Fatal(err)
 				}
 
-				if ok {
-					a = append(a, &scanner.Error{Pos: g.Pos, Msg: fmt.Sprintf("[PASS errorcheck] %s: %s", e.S(), qmsg(g.Msg))})
-					matched = true
-					break inner
+				sum += len(src)
+				f := fs.AddFile(v, -1, len(src))
+				l.init(f, src)
+				for {
+					_, tok := l.scan()
+					if tok == token.EOF {
+						break
+					}
 				}
 			}
 		}
-		if !matched {
-			a = append(a, &scanner.Error{Pos: g.Pos, Msg: fmt.Sprintf("[FAIL errorcheck: error does not match] %s: %s", e.S(), qmsg(g0.Msg))})
-			fail = true
+		b.SetBytes(int64(sum))
+	})
+
+	b.Run("StdMMap", func(b *testing.B) {
+		b.ResetTimer()
+		var sum int
+		for i := 0; i < b.N; i++ {
+			sum = 0
+			for _, v := range stdTestFiles {
+				f0, err := os.Open(v)
+				if err != nil {
+					b.Fatal(err)
+				}
+
+				src, err := mmap.Map(f0, 0, 0)
+				if err != nil {
+					b.Fatal(err)
+				}
+
+				sum += len(src)
+				f := fs.AddFile(v, -1, len(src))
+				l.init(f, src)
+				for {
+					_, tok := l.scan()
+					if tok == token.EOF {
+						break
+					}
+				}
+				src.Unmap()
+				f0.Close()
+			}
 		}
-		delete(expect, line)
+		b.SetBytes(int64(sum))
+	})
+
+	b.Run("StdParalel", func(b *testing.B) {
+		c := make(chan error, len(stdTestFiles))
+		b.ResetTimer()
+		var sum int
+		for i := 0; i < b.N; i++ {
+			sum = 0
+			for _, v := range stdTestFiles {
+				go func(v string) {
+					src, err := ioutil.ReadFile(v)
+					if err != nil {
+						c <- err
+					}
+
+					sum += len(src)
+					f := fs.AddFile(v, -1, len(src))
+					l := newLexer(f, src)
+					for {
+						_, tok := l.scan()
+						if tok == token.EOF {
+							break
+						}
+					}
+					c <- nil
+				}(v)
+			}
+			for range stdTestFiles {
+				if err := <-c; err != nil {
+					b.Fatal(err)
+				}
+			}
+		}
+		b.SetBytes(int64(sum))
+	})
+
+	b.Run("StdParalelMMap", func(b *testing.B) {
+		c := make(chan error, len(stdTestFiles))
+		b.ResetTimer()
+		var sum int
+		for i := 0; i < b.N; i++ {
+			sum = 0
+			for _, v := range stdTestFiles {
+				go func(v string) {
+					f0, err := os.Open(v)
+					if err != nil {
+						c <- err
+					}
+
+					defer f0.Close()
+
+					src, err := mmap.Map(f0, 0, 0)
+					if err != nil {
+						c <- err
+					}
+
+					defer src.Unmap()
+
+					sum += len(src)
+					f := fs.AddFile(v, -1, len(src))
+					l := newLexer(f, src)
+					for {
+						_, tok := l.scan()
+						if tok == token.EOF {
+							break
+						}
+					}
+					c <- nil
+				}(v)
+			}
+			for range stdTestFiles {
+				if err := <-c; err != nil {
+					b.Fatal(err)
+				}
+			}
+		}
+		b.SetBytes(int64(sum))
+	})
+}
+
+type ylex struct {
+	*lexer
+	lbrace        int
+	lbraceRule    int
+	lbraceStack   []int
+	loophack      bool
+	loophackStack []bool
+	ofs           int
+	p             *yparser
+	tok           token.Token
+}
+
+func (l *ylex) init(f *token.File, src []byte) {
+	l.lexer.init(f, src)
+	l.lbrace = 0
+	l.lbraceStack = l.lbraceStack[:0]
+	l.loophack = false
+	l.loophackStack = l.loophackStack[:0]
+}
+
+func newYlex(l *lexer, p *yparser) *ylex {
+	yl := &ylex{lexer: l, p: p}
+	for _, v := range p.Rules {
+		if v.Sym.Name == "lbrace" {
+			yl.lbraceRule = v.RuleNum
+			break
+		}
 	}
-	if !fail && len(expect) == 0 {
-		t.Logf("[PASS errorcheck] %v\n", fname)
+	return yl
+}
+
+func (l *ylex) lex() (int, *y.Symbol) {
+	ofs, tok := l.scan()
+	sym, ok := l.p.tok2sym[tok]
+	if !ok {
+		panic(fmt.Sprintf("%s: missing symbol for token %q", l.position(ofs), tok))
 	}
-	for _, e := range expect {
-		a = append(a, &scanner.Error{Pos: position(e.Pos()), Msg: fmt.Sprintf("[FAIL errorcheck: missing error] %s", e.S())})
+
+	switch tok {
+	case token.FOR, token.IF, token.SELECT, token.SWITCH:
+		l.loophack = true
+	case token.LPAREN, token.LBRACK:
+		if l.loophack || len(l.loophackStack) != 0 {
+			l.loophackStack = append(l.loophackStack, l.loophack)
+			l.loophack = false
+		}
+	case token.RPAREN, token.RBRACK:
+		if n := len(l.loophackStack); n != 0 {
+			l.loophack = l.loophackStack[n-1]
+			l.loophackStack = l.loophackStack[:n-1]
+		}
+	case token.LBRACE:
+		l.lbrace++
+		if l.loophack {
+			tok = tokenBODY
+			sym = l.p.tok2sym[tok]
+			l.loophack = false
+		}
+	case token.RBRACE:
+		l.lbrace--
+		if n := len(l.lbraceStack); n != 0 && l.lbraceStack[n-1] == l.lbrace {
+			l.lbraceStack = l.lbraceStack[:n-1]
+			l.loophack = true
+		}
 	}
-	a.Sort()
-	for _, v := range a {
-		fmt.Fprintf(logw, "%s %s\n", v.Msg, v.Pos)
+	l.tok = tok
+	l.ofs = ofs
+	return ofs, sym
+}
+
+func (l *ylex) fixLbr() {
+	n := l.lbrace - 1
+	switch l.tok {
+	case token.RBRACE:
+		l.loophack = true
+		return
+	case token.LBRACE:
+		n--
+	}
+
+	l.lbraceStack = append(l.lbraceStack, n)
+}
+
+type yparser struct {
+	*yParser
+	reduce func(int)
+	trace  func(int)
+	yyS    []int
+	yySyms []*y.Symbol
+	yychar *y.Symbol
+}
+
+func newYParser(reduce, trace func(int)) *yparser {
+	return &yparser{
+		yParser: yp0,
+		reduce:  reduce,
+		trace:   trace,
 	}
 }
 
-func TestTmp(t *testing.T) {
-	c, err := newContext("", runtime.GOARCH, "", nil, nil, EnableGenerics())
-	if err != nil {
-		panic("internal error")
+func (p *yparser) parse(lex func(int) *y.Symbol) error {
+	yystate := 0
+	p.yyS = p.yyS[:0]
+	p.yySyms = p.yySyms[:0]
+	p.yychar = nil
+	for {
+		p.yyS = append(p.yyS, yystate)
+		if p.trace != nil {
+			p.trace(yystate)
+		}
+		if p.yychar == nil {
+			p.yychar = lex(yystate)
+		}
+		switch typ, arg := p.action(yystate, p.yychar).Kind(); typ {
+		case 'a':
+			return nil
+		case 's':
+			p.yySyms = append(p.yySyms, p.yychar)
+			p.yychar = nil
+			yystate = arg
+		case 'r':
+			rule := p.Rules[arg]
+			if p.reduce != nil {
+				p.reduce(rule.RuleNum)
+			}
+			n := len(p.yyS)
+			m := len(rule.Components)
+			p.yyS = p.yyS[:n-m]
+			p.yySyms = append(p.yySyms[:n-m-1], rule.Sym)
+			n -= m
+			_, yystate = p.action(p.yyS[n-1], rule.Sym).Kind()
+		default:
+			return p.fail(yystate)
+		}
 	}
-	p := c.newPackage("", "")
-	if err := p.loadString("", `
-package foo
+}
 
-`,
-	); err != nil {
-		t.Fatal(errStr(err))
+func (p *yparser) fail(yystate int) error {
+	var a []string
+	for _, v := range p.Table[yystate] {
+		nm := v.Sym.Name
+		if nm == "$end" {
+			nm = "EOF"
+		}
+		if l := v.Sym.LiteralString; l != "" {
+			nm = l
+		}
+		a = append(a, nm)
 	}
+	sort.Strings(a)
+	return fmt.Errorf("no action for %s in state %d, follow set: [%v]", p.yychar, yystate, strings.Join(a, ", "))
+}
 
-	p.Scope.check(&context{Context: c, pkg: p})
-	if err := c.errors(); err != nil {
-		t.Fatal(errStr(err))
+func (p *yparser) report(states []int) string {
+	var b bytes.Buffer
+	for _, state := range states {
+		fmt.Fprintf(&b, "state %d //", state)
+		syms, la := p.States[state].Syms0()
+		for _, v := range syms {
+			fmt.Fprintf(&b, " %s", v.Name)
+		}
+		if la != nil {
+			fmt.Fprintf(&b, " [%s]", la.Name)
+		}
+		w := 0
+		for _, v := range p.Table[state] {
+			nm := v.Sym.Name
+			if len(nm) > w {
+				w = len(nm)
+			}
+		}
+		w = -w - 2
+		a := []string{"\n"}
+		g := false
+		for _, v := range p.Table[state] {
+			nm := v.Sym.Name
+			switch typ, arg := v.Kind(); typ {
+			case 'a':
+				a = append(a, fmt.Sprintf("    %*saccept", w, nm))
+			case 's':
+				a = append(a, fmt.Sprintf("    %*sshift and goto state %v", w, nm, arg))
+			case 'r':
+				a = append(a, fmt.Sprintf("    %*sreduce using rule %v (%s)", w, nm, arg, p.Rules[arg].Sym.Name))
+			case 'g':
+				if !g {
+					a = append(a, "")
+					g = true
+				}
+				a = append(a, fmt.Sprintf("    %*sgoto state %v", w, nm, arg))
+			default:
+				panic("internal error")
+			}
+		}
+		b.WriteString(strings.Join(a, "\n"))
+		b.WriteString("\n----\n")
 	}
+	return b.String()
+}
 
-	//t.Log(PrettyString(p.Files[0]))
+func (*yparser) tok2str(tok token.Token) string {
+	switch tok {
+	case token.ILLEGAL:
+		return "@"
+	case token.COMMENT, token.EOF, tokenNL, tokenLTLT, tokenGTGT:
+		return ""
+	case token.IDENT:
+		return "a"
+	case token.INT:
+		return "1"
+	case token.FLOAT:
+		return "2.3"
+	case token.IMAG:
+		return "4i"
+	case token.CHAR:
+		return "'b'"
+	case token.STRING:
+		return `"c"`
+	case tokenBODY:
+		return "{"
+	default:
+		return tok.String()
+	}
+}
+
+func (p *yparser) newCover() map[int]struct{} {
+	r := make(map[int]struct{}, len(p.States))
+	for i := range p.States {
+		r[i] = struct{}{}
+	}
+	return r
+}
+
+func (p *yparser) followList(state int) (r []*y.Symbol) {
+	for _, v := range p.Table[state] {
+		if v.Sym.IsTerminal {
+			r = append(r, v.Sym)
+		}
+	}
+	return r
+}
+
+func (p *yparser) followSet(state int) map[*y.Symbol]struct{} {
+	l := p.followList(state)
+	m := make(map[*y.Symbol]struct{}, len(l))
+	for _, v := range l {
+		m[v] = struct{}{}
+	}
+	return m
+}
+
+func (p *yparser) action(state int, sym *y.Symbol) *y.Action {
+	for _, v := range p.Table[state] {
+		if v.Sym == sym {
+			return &v
+		}
+	}
+	return nil
+}
+
+func testParserYacc(t *testing.T, files []string) {
+	var cover map[int]struct{}
+	var yl *ylex
+	yp := newYParser(
+		func(rule int) {
+			if rule == yl.lbraceRule {
+				yl.fixLbr()
+			}
+		},
+		func(state int) { delete(cover, state) },
+	)
+	cover = yp.newCover()
+	cn0 := len(cover)
+	fs := token.NewFileSet()
+	l := newLexer(nil, nil)
+	yl = newYlex(l, yp)
+	sum := 0
+	toks := 0
+	nfiles := 0
+	for _, path := range files {
+		src, err := ioutil.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		f := fs.AddFile(path, -1, len(src))
+		nfiles++
+		sum += len(src)
+		yl.init(f, src)
+		var ofs int
+		if err = yp.parse(
+			func(int) (s *y.Symbol) {
+				ofs, s = yl.lex()
+				toks++
+				return s
+			},
+		); err != nil {
+			t.Fatalf("%s: %v", yl.position(ofs), err)
+		}
+	}
+	if cn := len(cover); cn != 0 {
+		t.Errorf("states covered: %d/%d", cn0-cn, cn0)
+	} else {
+		t.Logf("states covered: %d/%d", cn0-cn, cn0)
+	}
+	t.Logf("files: %v, toks: %v, bytes %v", nfiles, toks, sum)
+	e := -1
+	for s := range cover {
+		if e < 0 || e > s {
+			e = s
+		}
+	}
+	if e >= 0 {
+		t.Errorf("states %v, unused %v, first unused state %v", len(yp.States), len(cover), e)
+	}
+}
+
+func testParser(t *testing.T, files []string) {
+	fs := token.NewFileSet()
+	l := newLexer(nil, nil)
+	for _, path := range files {
+		src, err := ioutil.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		f := fs.AddFile(path, -1, len(src))
+		l.init(f, src)
+		p := newParser(l)
+		//p.parse()
+		if !p.ok {
+			t.Fatal("TODO")
+		}
+	}
+}
+
+func testParserStates(t *testing.T) {
+	//TODO check correct accepted/rejected tokens in all states.
+}
+
+func TestParser(t *testing.T) {
+	cover := append(gorootTestFiles, ycover)
+	_ = t.Run("Yacc", func(*testing.T) { testParserYacc(t, cover) }) &&
+		t.Run("GOROOT", func(*testing.T) { testParser(t, cover) }) &&
+		t.Run("States", testParserStates)
+
 }
