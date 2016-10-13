@@ -1092,8 +1092,8 @@ func testParserStates(t *testing.T) {
 
 func TestParser(t *testing.T) {
 	cover := append(gorootTestFiles, ycover)
-	_ = t.Run("Yacc", func(*testing.T) { testParserYacc(t, cover) }) &&
-		t.Run("GOROOT", func(*testing.T) { testParser(t, cover) }) &&
+	_ = t.Run("Yacc", func(t *testing.T) { testParserYacc(t, cover) }) &&
+		t.Run("GOROOT", func(t *testing.T) { testParser(t, cover) }) &&
 		t.Run("States", testParserStates)
 
 }
