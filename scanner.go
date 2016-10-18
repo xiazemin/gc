@@ -199,24 +199,24 @@ skip:
 			case '\n':
 				l.err(l.ofs-1, "unknown escape sequence")
 			case '0', '1', '2', '3', '4', '5', '6', '7':
-				if l.scanOctals(3) < 3 && l.stringEscFail() {
+				if l.octals(3) < 3 && l.stringEscFail() {
 					return ofs, token.STRING
 				}
 			case 'a', 'b', 'f', 'n', 'r', 't', 'v', '\\', '"':
 				l.n()
 			case 'u':
 				l.n()
-				if l.scanHexadecimals(4) < 4 && l.stringEscFail() {
+				if l.hexadecimals(4) < 4 && l.stringEscFail() {
 					return ofs, token.STRING
 				}
 			case 'U':
 				l.n()
-				if l.scanHexadecimals(8) < 8 && l.stringEscFail() {
+				if l.hexadecimals(8) < 8 && l.stringEscFail() {
 					return ofs, token.STRING
 				}
 			case 'x':
 				l.n()
-				if l.scanHexadecimals(2) < 2 && l.c == classEOF {
+				if l.hexadecimals(2) < 2 && l.c == classEOF {
 					l.err(l.ofs, "escape sequence not terminated")
 				}
 			case classEOF:
@@ -272,24 +272,24 @@ skip:
 				l.err(l.ofs-1, "unknown escape sequence")
 				return ofs, token.CHAR
 			case '0', '1', '2', '3', '4', '5', '6', '7':
-				if l.scanOctals(3) < 3 {
+				if l.octals(3) < 3 {
 					return l.charEscFail(ofs)
 				}
 			case 'a', 'b', 'f', 'n', 'r', 't', 'v', '\\', '\'':
 				l.n()
 			case 'u':
 				l.n()
-				if l.scanHexadecimals(4) < 4 {
+				if l.hexadecimals(4) < 4 {
 					return l.charEscFail(ofs)
 				}
 			case 'U':
 				l.n()
-				if l.scanHexadecimals(8) < 8 {
+				if l.hexadecimals(8) < 8 {
 					return l.charEscFail(ofs)
 				}
 			case 'x':
 				l.n()
-				if l.scanHexadecimals(2) < 2 {
+				if l.hexadecimals(2) < 2 {
 					return l.charEscFail(ofs)
 				}
 			case classEOF:
@@ -358,8 +358,8 @@ skip:
 		l.n()
 		switch l.c {
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-			l.scanDecimals()
-			return ofs, l.scanExponent()
+			l.decimals()
+			return ofs, l.exponent()
 		case '.':
 			switch l.n() {
 			case '.':
@@ -418,21 +418,21 @@ skip:
 			return ofs, token.QUO
 		}
 	case '0':
-		n := l.scanOctals(-1)
+		n := l.octals(-1)
 		switch l.c {
 		case '.':
 			l.n()
-			l.scanDecimals()
-			return ofs, l.scanExponent()
+			l.decimals()
+			return ofs, l.exponent()
 		case '8', '9':
-			l.scanDecimals()
+			l.decimals()
 			switch l.c {
 			case '.':
 				l.n()
-				l.scanDecimals()
-				return ofs, l.scanExponent()
+				l.decimals()
+				return ofs, l.exponent()
 			case 'e', 'E':
-				return ofs, l.scanExponent()
+				return ofs, l.exponent()
 			case 'i':
 				l.n()
 				return ofs, token.IMAG
@@ -440,7 +440,7 @@ skip:
 				l.err(ofs, "illegal octal number")
 			}
 		case 'e', 'E':
-			return ofs, l.scanExponent()
+			return ofs, l.exponent()
 		case 'i':
 			l.n()
 			return ofs, token.IMAG
@@ -450,21 +450,21 @@ skip:
 			}
 
 			l.n()
-			if l.scanHexadecimals(-1) == 0 {
+			if l.hexadecimals(-1) == 0 {
 				l.err(ofs, "illegal hexadecimal number")
 			}
 		}
 
 		return ofs, token.INT
 	case '1', '2', '3', '4', '5', '6', '7', '8', '9':
-		l.scanDecimals()
+		l.decimals()
 		switch l.c {
 		case '.':
 			l.n()
-			l.scanDecimals()
-			return ofs, l.scanExponent()
+			l.decimals()
+			return ofs, l.exponent()
 		case 'e', 'E':
-			return ofs, l.scanExponent()
+			return ofs, l.exponent()
 		case 'i':
 			l.n()
 			return ofs, token.IMAG
@@ -551,7 +551,7 @@ skip:
 			return ofs, token.BREAK
 		}
 
-		return ofs, l.scanIdent()
+		return ofs, l.ident()
 	case 'c':
 		switch l.n() {
 		case 'a':
@@ -577,7 +577,7 @@ skip:
 			}
 		}
 
-		return ofs, l.scanIdent()
+		return ofs, l.ident()
 	case 'd':
 		if l.n() == 'e' && l.n() == 'f' {
 			switch l.n() {
@@ -592,13 +592,13 @@ skip:
 			}
 		}
 
-		return ofs, l.scanIdent()
+		return ofs, l.ident()
 	case 'e':
 		if l.n() == 'l' && l.n() == 's' && l.n() == 'e' && !isIdentNext(l.n()) {
 			return ofs, token.ELSE
 		}
 
-		return ofs, l.scanIdent()
+		return ofs, l.ident()
 	case 'f':
 		switch l.n() {
 		case 'a':
@@ -615,7 +615,7 @@ skip:
 			}
 		}
 
-		return ofs, l.scanIdent()
+		return ofs, l.ident()
 	case 'g':
 		if l.n() == 'o' {
 			if !isIdentNext(l.n()) {
@@ -627,7 +627,7 @@ skip:
 			}
 		}
 
-		return ofs, l.scanIdent()
+		return ofs, l.ident()
 	case 'i':
 		switch l.n() {
 		case 'f':
@@ -644,19 +644,19 @@ skip:
 			}
 		}
 
-		return ofs, l.scanIdent()
+		return ofs, l.ident()
 	case 'm':
 		if l.n() == 'a' && l.n() == 'p' && !isIdentNext(l.n()) {
 			return ofs, token.MAP
 		}
 
-		return ofs, l.scanIdent()
+		return ofs, l.ident()
 	case 'p':
 		if l.n() == 'a' && l.n() == 'c' && l.n() == 'k' && l.n() == 'a' && l.n() == 'g' && l.n() == 'e' && !isIdentNext(l.n()) {
 			return ofs, token.PACKAGE
 		}
 
-		return ofs, l.scanIdent()
+		return ofs, l.ident()
 	case 'r':
 		switch l.n() {
 		case 'a':
@@ -669,7 +669,7 @@ skip:
 			}
 		}
 
-		return ofs, l.scanIdent()
+		return ofs, l.ident()
 	case 's':
 		switch l.n() {
 		case 'e':
@@ -686,19 +686,19 @@ skip:
 			}
 		}
 
-		return ofs, l.scanIdent()
+		return ofs, l.ident()
 	case 't':
 		if l.n() == 'y' && l.n() == 'p' && l.n() == 'e' && !isIdentNext(l.n()) {
 			return ofs, token.TYPE
 		}
 
-		return ofs, l.scanIdent()
+		return ofs, l.ident()
 	case 'v':
 		if l.n() == 'a' && l.n() == 'r' && !isIdentNext(l.n()) {
 			return ofs, token.VAR
 		}
 
-		return ofs, l.scanIdent()
+		return ofs, l.ident()
 	case '{':
 		l.n()
 		return ofs, token.LBRACE
@@ -749,7 +749,7 @@ skip:
 	}
 }
 
-func (l *lexer) scanOctals(max int) (n int) {
+func (l *lexer) octals(max int) (n int) {
 	for max != 0 && l.c >= '0' && l.c <= '7' {
 		l.n()
 		n++
@@ -758,13 +758,13 @@ func (l *lexer) scanOctals(max int) (n int) {
 	return n
 }
 
-func (l *lexer) scanDecimals() {
+func (l *lexer) decimals() {
 	for l.c >= '0' && l.c <= '9' {
 		l.n()
 	}
 }
 
-func (l *lexer) scanExponent() token.Token {
+func (l *lexer) exponent() token.Token {
 	switch l.c {
 	case 'e', 'E':
 		l.n()
@@ -772,7 +772,7 @@ func (l *lexer) scanExponent() token.Token {
 		case '+', '-':
 			l.n()
 		}
-		l.scanDecimals()
+		l.decimals()
 	}
 	switch l.c {
 	case 'i':
@@ -783,7 +783,7 @@ func (l *lexer) scanExponent() token.Token {
 	return token.FLOAT
 }
 
-func (l *lexer) scanHexadecimals(max int) (n int) {
+func (l *lexer) hexadecimals(max int) (n int) {
 	for max != 0 && (l.c >= '0' && l.c <= '9' || l.c >= 'a' && l.c <= 'f' || l.c >= 'A' && l.c <= 'F') {
 		l.n()
 		n++
@@ -796,7 +796,7 @@ func isIdentNext(c byte) bool {
 	return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_' || c >= '0' && c <= '9' || c == classNonASCII
 }
 
-func (l *lexer) scanIdent() token.Token {
+func (l *lexer) ident() token.Token {
 	for l.c >= 'a' && l.c <= 'z' || l.c >= 'A' && l.c <= 'Z' || l.c == '_' || l.c >= '0' && l.c <= '9' || l.c == classNonASCII {
 		l.n()
 	}

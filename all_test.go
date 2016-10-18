@@ -17,12 +17,14 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"testing"
 
 	"github.com/cznic/lex"
 	dfa "github.com/cznic/lexer"
+	"github.com/cznic/mathutil"
 	"github.com/cznic/y"
 	"github.com/edsrzf/mmap-go"
 )
@@ -57,6 +59,8 @@ func TODO(...interface{}) string { //TODOOK
 	return fmt.Sprintf("// TODO: %s:%d:\n", path.Base(fn), fl) //TODOOK
 }
 
+func stack() []byte { return debug.Stack() }
+
 func use(...interface{}) {}
 
 func init() {
@@ -66,13 +70,14 @@ func init() {
 // ============================================================================
 
 const (
-	lfile  = "testdata/scanner/scanner.l"
-	yfile  = "testdata/parser/y/parser.y"
-	ycover = "testdata/parser/ycover.go"
+	lexFile   = "testdata/scanner/scanner.l"
+	yaccCover = "testdata/parser/ycover.go"
+	yaccFile  = "testdata/parser/parser.y"
 )
 
 type yParser struct {
 	*y.Parser
+	reports   [][]byte
 	terminals []*y.Symbol
 	tok2sym   map[token.Token]*y.Symbol
 }
@@ -83,12 +88,13 @@ var (
 	_  = flag.Bool("closures", false, "closures")
 
 	lexL = func() *lex.L {
-		lf, err := os.Open(lfile)
+		lf, err := os.Open(lexFile)
 		if err != nil {
 			panic(err)
 		}
 
-		l, err := lex.NewL(lfile, bufio.NewReader(lf), false, false)
+		defer lf.Close()
+		l, err := lex.NewL(lexFile, bufio.NewReader(lf), false, false)
 		if err != nil {
 			panic(err)
 		}
@@ -113,7 +119,7 @@ var (
 		}
 		fs := token.NewFileSet()
 		var out bytes.Buffer
-		p, err := y.ProcessFile(fs, yfile, &y.Options{
+		p, err := y.ProcessFile(fs, yaccFile, &y.Options{
 			Closures:  closures,
 			Reducible: true,
 			Report:    &out,
@@ -126,6 +132,19 @@ var (
 
 		if err != nil {
 			panic(err)
+		}
+
+		reports := make([][]byte, len(p.States))
+		rep := out.Bytes()
+		sep := []byte("\ns") // "\nstate "
+		s := 0
+		for i := range reports {
+			e := bytes.Index(rep[s:], sep)
+			if e < 0 {
+				e = len(rep[s:]) - 1
+			}
+			reports[i] = rep[s : s+e]
+			s = s + e + 1
 		}
 
 		m := make(map[token.Token]*y.Symbol, len(p.Syms))
@@ -168,6 +187,7 @@ var (
 		}
 		return &yParser{
 			Parser:    p,
+			reports:   reports,
 			terminals: t,
 			tok2sym:   m,
 		}
@@ -654,6 +674,7 @@ func BenchmarkScanner(b *testing.B) {
 
 				src, err := mmap.Map(f0, 0, 0)
 				if err != nil {
+					f0.Close()
 					b.Fatal(err)
 				}
 
@@ -907,45 +928,8 @@ func (p *yparser) fail(yystate int) error {
 func (p *yparser) report(states []int) string {
 	var b bytes.Buffer
 	for _, state := range states {
-		fmt.Fprintf(&b, "state %d //", state)
-		syms, la := p.States[state].Syms0()
-		for _, v := range syms {
-			fmt.Fprintf(&b, " %s", v.Name)
-		}
-		if la != nil {
-			fmt.Fprintf(&b, " [%s]", la.Name)
-		}
-		w := 0
-		for _, v := range p.Table[state] {
-			nm := v.Sym.Name
-			if len(nm) > w {
-				w = len(nm)
-			}
-		}
-		w = -w - 2
-		a := []string{"\n"}
-		g := false
-		for _, v := range p.Table[state] {
-			nm := v.Sym.Name
-			switch typ, arg := v.Kind(); typ {
-			case 'a':
-				a = append(a, fmt.Sprintf("    %*saccept", w, nm))
-			case 's':
-				a = append(a, fmt.Sprintf("    %*sshift and goto state %v", w, nm, arg))
-			case 'r':
-				a = append(a, fmt.Sprintf("    %*sreduce using rule %v (%s)", w, nm, arg, p.Rules[arg].Sym.Name))
-			case 'g':
-				if !g {
-					a = append(a, "")
-					g = true
-				}
-				a = append(a, fmt.Sprintf("    %*sgoto state %v", w, nm, arg))
-			default:
-				panic("internal error")
-			}
-		}
-		b.WriteString(strings.Join(a, "\n"))
-		b.WriteString("\n----\n")
+		b.Write(p.reports[state])
+		b.WriteString("----\n")
 	}
 	return b.String()
 }
@@ -1067,9 +1051,56 @@ func testParserYacc(t *testing.T, files []string) {
 	}
 }
 
+func (p *parser) fail() string {
+	var yl *ylex
+	var states []int
+	yp := newYParser(
+		func(rule int) {
+			if rule == yl.lbraceRule {
+				yl.fixLbr()
+			}
+		},
+		func(st int) { states = append(states, st) },
+	)
+	fs := token.NewFileSet()
+	yl = newYlex(newLexer(nil, nil), yp)
+	yl.init(fs.AddFile(p.l.f.Name(), -1, len(p.l.src)), p.l.src)
+	yp.parse(
+		func(st int) *y.Symbol {
+			if ofs, s := yl.lex(); ofs <= p.ofs {
+				return s
+			}
+
+			return yp.Syms["$end"]
+		},
+	)
+	return yp.report(states[mathutil.Max(0, len(states)-7):])
+}
+
+func (p *parser) todo() {
+	_, fn, fl, _ := runtime.Caller(1)
+	p.err(p.ofs, "%q=%q: TODO %v:%v", p.c, p.l.lit, fn, fl)
+}
+
 func testParser(t *testing.T, files []string) {
+	var p *parser
+
+	defer func() {
+		if err := recover(); err != nil {
+			t.Errorf("\n====\n%s%v", p.fail(), err)
+		}
+	}()
+
 	fs := token.NewFileSet()
 	l := newLexer(nil, nil)
+	l.errHandler = func(pos token.Pos, msg string, args ...interface{}) {
+		switch {
+		case len(args) == 0:
+			panic(fmt.Errorf("%s: "+msg, l.f.Position(pos)))
+		default:
+			panic(fmt.Errorf("%s: "+msg, append([]interface{}{l.f.Position(pos)}, args...)...))
+		}
+	}
 	for _, path := range files {
 		src, err := ioutil.ReadFile(path)
 		if err != nil {
@@ -1078,10 +1109,10 @@ func testParser(t *testing.T, files []string) {
 
 		f := fs.AddFile(path, -1, len(src))
 		l.init(f, src)
-		p := newParser(l)
-		//p.parse()
+		p = newParser(l)
+		p.parse()
 		if !p.ok {
-			t.Fatal("TODO")
+			p.todo()
 		}
 	}
 }
@@ -1091,7 +1122,7 @@ func testParserStates(t *testing.T) {
 }
 
 func TestParser(t *testing.T) {
-	cover := append(gorootTestFiles, ycover)
+	cover := append(gorootTestFiles, yaccCover)
 	_ = t.Run("Yacc", func(t *testing.T) { testParserYacc(t, cover) }) &&
 		t.Run("GOROOT", func(t *testing.T) { testParser(t, cover) }) &&
 		t.Run("States", testParserStates)

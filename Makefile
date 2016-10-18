@@ -30,12 +30,12 @@ cpu: clean
 	go tool pprof -lines *.test cpu.out
 
 edit:
-	@2>/dev/null gvim -p Makefile testdata/scanner/scanner.l testdata/parser/y/parser.y *.go
+	@2>/dev/null gvim -p Makefile testdata/scanner/scanner.l testdata/parser/parser.y *.go
 
 editor:
 	gofmt -l -s -w *.go
 	go test 2>&1 | tee log
-	go build
+	#go build
 
 fuzz:
 	go-fuzz-build -func FuzzLexer github.com/cznic/ngc
