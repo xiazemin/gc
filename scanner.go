@@ -17,7 +17,6 @@ const (
 )
 
 const (
-	minTokenToken = token.ILLEGAL
 	maxTokenToken = token.VAR
 )
 
@@ -26,9 +25,7 @@ const (
 	tokenNL   = iota + maxTokenToken + 1
 	tokenLTLT // «
 	tokenGTGT // »
-	tokenBODY // Only for reference parser.
-
-	nextToken
+	tokenBODY
 )
 
 var (
@@ -56,9 +53,8 @@ var (
 type lexer struct {
 	commentHandler  func(ofs int, lit []byte)
 	commentOfs      int
-	errHandler      func(pos token.Pos, msg string, args ...interface{})
+	errHandler      func(ofs int, msg string, args ...interface{})
 	errorCount      int // Number of errors encountered.
-	f               *token.File
 	lit             []byte
 	ofs             int // Next byte offset.
 	prev            token.Token
@@ -68,17 +64,15 @@ type lexer struct {
 	noSemiInjection bool
 }
 
-func newLexer(f *token.File, src []byte) *lexer {
+func newLexer(src []byte) *lexer {
 	l := &lexer{
-		f:   f,
 		src: src,
 	}
 	l.n()
 	return l
 }
 
-func (l *lexer) init(f *token.File, src []byte) *lexer {
-	l.f = f
+func (l *lexer) init(src []byte) *lexer {
 	l.src = src
 	l.ofs = 0
 	l.prev = tokenNL
@@ -92,7 +86,7 @@ func (l *lexer) init(f *token.File, src []byte) *lexer {
 func (l *lexer) err(ofs int, msg string, args ...interface{}) {
 	l.errorCount++
 	if l.errHandler != nil {
-		l.errHandler(l.f.Pos(ofs), msg, args...)
+		l.errHandler(ofs, msg, args...)
 	}
 }
 
@@ -175,7 +169,6 @@ skip:
 		l.n()
 		goto skip
 	case '\n':
-		l.f.AddLine(l.ofs)
 		l.n()
 		return ofs, tokenNL
 	case '!':
@@ -194,8 +187,7 @@ skip:
 		case '"':
 			l.n()
 		case '\\':
-			l.n()
-			switch l.c {
+			switch l.n() {
 			case '\n':
 				l.err(l.ofs-1, "unknown escape sequence")
 			case '0', '1', '2', '3', '4', '5', '6', '7':
@@ -257,8 +249,7 @@ skip:
 
 		return ofs, token.AND
 	case '\'':
-		l.n()
-		switch l.c {
+		switch l.n() {
 		case '\n', classEOF:
 			l.err(ofs, "rune literal not terminated")
 		case '\'':
@@ -266,8 +257,7 @@ skip:
 			l.n()
 			return ofs, token.CHAR
 		case '\\':
-			l.n()
-			switch l.c {
+			switch l.n() {
 			case '\n':
 				l.err(l.ofs-1, "unknown escape sequence")
 				return ofs, token.CHAR
@@ -355,8 +345,7 @@ skip:
 
 		return ofs, token.SUB
 	case '.':
-		l.n()
-		switch l.c {
+		switch l.n() {
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 			l.decimals()
 			return ofs, l.exponent()
@@ -383,7 +372,6 @@ skip:
 				switch l.c {
 				case '\n':
 					hasNL = true
-					l.f.AddLine(l.ofs)
 				case '*':
 				more2:
 					switch l.n() {
@@ -391,7 +379,6 @@ skip:
 						goto more2
 					case '\n':
 						hasNL = true
-						l.f.AddLine(l.ofs)
 					case '/':
 						l.n()
 						if hasNL {
@@ -539,8 +526,6 @@ skip:
 		case '`':
 			l.n()
 			return ofs, token.STRING
-		case '\n':
-			l.f.AddLine(l.ofs)
 		case classEOF:
 			l.err(ofs, "raw string literal not terminated")
 			return ofs, token.STRING
@@ -767,8 +752,7 @@ func (l *lexer) decimals() {
 func (l *lexer) exponent() token.Token {
 	switch l.c {
 	case 'e', 'E':
-		l.n()
-		switch l.c {
+		switch l.n() {
 		case '+', '-':
 			l.n()
 		}
@@ -853,6 +837,3 @@ func (l *lexer) charEscFail(ofs int) (int, token.Token) {
 	}
 	return ofs, token.CHAR
 }
-
-func (l *lexer) pos(ofs int) token.Pos           { return l.f.Pos(ofs) }
-func (l *lexer) position(ofs int) token.Position { return l.f.Position(l.pos(ofs)) }

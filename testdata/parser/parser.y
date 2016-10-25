@@ -90,405 +90,331 @@
 %%
 
 file:
-	package imports xdcl_list
-
-package:
-	"package" IDENT ';'
+	"package" IDENT ';' imports topLevelDeclList
 
 imports:
-|	imports import ';'
+|	imports "import" '(' ')' ';'
+|	imports "import" '(' importSpecList semiOpt ')' ';'
+|	imports "import" importSpec ';'
 
-import:
-	"import" import_spec
-|	"import" '(' import_spec_list osemi ')'
-|	"import" '(' ')'
+importSpecList:
+	importSpec
+|	importSpecList ';' importSpec
 
-import_spec_list:
-	import_spec
-|	import_spec_list ';' import_spec
-
-import_spec:
-	STRING
+importSpec:
+	'.' STRING
 |	IDENT STRING
-|	'.' STRING
+|	STRING
 
-xdcl:
-	common_dcl
-|	"func" fndcl fnbody
+topLevelDeclList:
+|	topLevelDeclList "func" '(' paramTypeListCommaOptOpt ')' IDENT '(' paramTypeListCommaOptOpt ')' result fnBody ';'
+|	topLevelDeclList "func" IDENT '(' paramTypeListCommaOptOpt ')' result fnBody ';'
+|	topLevelDeclList commonDecl ';'
 
-common_dcl:
-	"var" vardcl
-|	"var" '(' vardcl_list osemi ')'
-|	"var" '(' ')'
-|	"const" constdcl
-|	"const" '(' constdcl osemi ')'
-|	"const" '(' constdcl ';' constdcl_list osemi ')'
-|	"const" '(' ')'
-|	"type" typedcl
-|	"type" '(' typedcl_list osemi ')'
+commonDecl:
+	"const" '(' ')'
+|	"const" '(' constSpec ';' constSpecList semiOpt ')'
+|	"const" '(' constSpec semiOpt ')'
+|	"const" constSpec
 |	"type" '(' ')'
+|	"type" '(' typeSpecList semiOpt ')'
+|	"type" typeSpec
+|	"var" '(' ')'
+|	"var" '(' varSpecList semiOpt ')'
+|	"var" varSpec
 
-vardcl:
-	ident_list type
-|	ident_list type '=' expr_list
-|	ident_list '=' expr_list
+varSpec:
+	identList '=' exprList
+|	identList typ
+|	identList typ '=' exprList
 
-constdcl:
-	ident_list type '=' expr_list
-|	ident_list '=' expr_list
+constSpec:
+	identList
+|	identList '=' exprList
+|	identList typ
+|	identList typ '=' exprList
 
-constdcl1:
-	constdcl
-|	ident_list type
-|	ident_list
+typeSpec:
+	IDENT typ
 
-typedcl:
-	IDENT type
-
-simple_stmt:
+simpleStmt:
 	expr
-|	expr asop expr
-|	expr_list '=' expr_list
-|	expr_list ":=" expr_list
+|	expr "%=" expr
+|	expr "&=" expr
+|	expr "&^=" expr
+|	expr "*=" expr
 |	expr "++"
+|	expr "+=" expr
 |	expr "--"
+|	expr "-=" expr
+|	expr "/=" expr
+|	expr "<<=" expr
+|	expr ">>=" expr
+|	expr "^=" expr
+|	expr "|=" expr
+|	exprList ":=" exprList
+|	exprList '=' exprList
 
-case:
-	"case" expr_or_type_list ':'
-|	"case" expr_or_type_list '=' expr ':'
-|	"case" expr_or_type_list ":=" expr ':'
-|	"default" ':'
+compoundStmt:
+	'{' stmtList '}'
 
-compound_stmt:
-	'{' stmt_list '}'
+caseBlockList:
+|	caseBlockList "case" exprOrTypeList ":=" expr ':' stmtList
+|	caseBlockList "case" exprOrTypeList ':' stmtList
+|	caseBlockList "case" exprOrTypeList '=' expr ':' stmtList
+|	caseBlockList "default" ':' stmtList
 
-caseblock:
-	case stmt_list
+loopBody:
+	BODY stmtList '}'
 
-caseblock_list:
-|	caseblock_list caseblock
+ifHeader:
+	simpleStmtOpt
+|	simpleStmtOpt ';' simpleStmtOpt
 
-loop_body:
-	BODY stmt_list '}'
-
-range_stmt:
-	expr_list '=' "range" expr
-|	expr_list ":=" "range" expr
-|	"range" expr
-
-for_header:
-	osimple_stmt ';' osimple_stmt ';' osimple_stmt
-|	osimple_stmt
-|	range_stmt
-
-for_stmt:
-	"for" for_header loop_body
-
-if_header:
-	osimple_stmt
-|	osimple_stmt ';' osimple_stmt
-
-if_stmt:
-	"if" if_header loop_body elseif_list else
-
-elseif:
-	"else" "if" if_header loop_body
-
-elseif_list:
-|	elseif_list elseif
-
-else:
-|	"else" compound_stmt
-
-switch_stmt:
-	"switch" if_header BODY caseblock_list '}'
-
-select_stmt:
-	"select" BODY caseblock_list '}'
+elseIfList:
+|	elseIfList "else" "if" ifHeader loopBody
 
 expr:
-	unary_expr
-|	expr "||" expr
+	expr "!=" expr
 |	expr "&&" expr
-|	expr "==" expr
-|	expr "!=" expr
-|	expr '<' expr
+|	expr "&^" expr
+|	expr "<-" expr
+|	expr "<<" expr
 |	expr "<=" expr
+|	expr "==" expr
 |	expr ">=" expr
-|	expr '>' expr
-|	expr '+' expr
-|	expr '-' expr
-|	expr '|' expr
-|	expr '^' expr
-|	expr '*' expr
-|	expr '/' expr
+|	expr ">>" expr
+|	expr "||" expr
 |	expr '%' expr
 |	expr '&' expr
-|	expr "&^" expr
-|	expr "<<" expr
-|	expr ">>" expr
-|	expr "<-" expr
+|	expr '*' expr
+|	expr '+' expr
+|	expr '-' expr
+|	expr '/' expr
+|	expr '<' expr
+|	expr '>' expr
+|	expr '^' expr
+|	expr '|' expr
+|	unaryExpr
 
-unary_expr:
-	primary_expr
-|	'*' unary_expr
-|	'&' unary_expr
-|	'+' unary_expr
-|	'-' unary_expr
-|	'!' unary_expr
-|	'^' unary_expr
-|	"<-" unary_expr
+unaryExpr:
+	"<-" unaryExpr
+|	'!' unaryExpr
+|	'&' unaryExpr
+|	'*' unaryExpr
+|	'+' unaryExpr
+|	'-' unaryExpr
+|	'^' unaryExpr
+|	primaryExpr
 
-pseudocall:
-	primary_expr '(' ')'
-|	primary_expr '(' expr_or_type_list ocomma ')'
-|	primary_expr '(' expr_or_type_list "..." ocomma ')'
+keyVal:
+	compLitExpr
+|	compLitExpr ':' compLitExpr
 
-primary_expr_no_paren:
-	literal
+compLitExpr:
+	'{' bracedKeyValList '}'
+|	expr
+
+primaryExpr:
+	'(' exprOrType ')'
 |	IDENT %prec _NotParen
-|	primary_expr '.' IDENT
-|	primary_expr '.' '(' expr_or_type ')'
-|	primary_expr '.' '(' "type" ')'
-|	primary_expr '[' expr ']'
-|	primary_expr '[' oexpr ':' oexpr ']'
-|	primary_expr '[' oexpr ':' oexpr ':' oexpr ']'
-|	pseudocall
-|	convtype '(' expr ocomma ')'
-|	othertype lbrace braced_keyval_list '}'
-|	primary_expr_no_paren '{' braced_keyval_list '}'
-|	fnliteral
+|	convType '(' expr commaOpt ')'
+|	fnType lbrace stmtList '}'
+|	literal
+|	otherType lbrace bracedKeyValList '}'
+|	primaryExpr '(' ')'
+|	primaryExpr '(' exprOrTypeList "..." commaOpt ')'
+|	primaryExpr '(' exprOrTypeList commaOpt ')'
+|	primaryExpr '.' '(' "type" ')'
+|	primaryExpr '.' '(' exprOrType ')'
+|	primaryExpr '.' IDENT
+|	primaryExpr '[' expr ']'
+|	primaryExpr '[' exprOpt ':' exprOpt ':' exprOpt ']'
+|	primaryExpr '[' exprOpt ':' exprOpt ']'
+|	primaryExpr '{' bracedKeyValList '}'
 
-keyval:
-	complitexpr ':' complitexpr
-
-complitexpr:
+exprOrType:
 	expr
-|	'{' braced_keyval_list '}'
-
-primary_expr:
-	primary_expr_no_paren
-|	'(' expr_or_type ')'
-
-expr_or_type:
-	expr
-|	non_expr_type %prec _PreferToRightParen
+|	nonExprType %prec _PreferToRightParen
 
 lbrace:
 	BODY
 |	'{'
 
-oident:
+identOpt:
 |	IDENT
 
-dotdotdot:
-	"..." type
+dddType:
+	"..." typ
 
-type:
-	recvchantype
-|	fntype
-|	othertype
-|	ptrtype
-|	dotname
-|	'(' type ')'
+typ:
+	'(' typ ')'
+|	qualifiedIdent
+|	fnType
+|	otherType
+|	ptrType
+|	rxChanType
 
-non_expr_type:
-	recvchantype
-|	fntype
-|	othertype
-|	'*' non_expr_type
+nonExprType:
+	'*' nonExprType
+|	fnType
+|	otherType
+|	rxChanType
 
-non_recvchantype:
-	fntype
-|	othertype
-|	ptrtype
-|	dotname
-|	'(' type ')'
+convType:
+	fnType
+|	otherType
 
-convtype:
-	fntype
-|	othertype
-
-fnret_type:
-	recvchantype
-|	fntype
-|	othertype
-|	ptrtype
-|	dotname
-
-dotname:
+qualifiedIdent:
 	IDENT %prec _NotParen
 |	IDENT '.' IDENT
 
-othertype:
-	'[' oexpr ']' type
-|	'[' "..." ']' type
-|	"chan" non_recvchantype
-|	"chan" "<-" type
-|	"map" '[' type ']' type
-|	structtype
-|	interfacetype
-
-ptrtype:
-	'*' type
-
-recvchantype:
-	"<-" "chan" type
-
-structtype:
-	"struct" lbrace structdcl_list osemi '}'
-|	"struct" lbrace '}'
-
-interfacetype:
-	"interface" lbrace interfacedcl_list osemi '}'
+otherType:
+	"chan" "<-" typ
+|	"chan" '(' typ ')'
+|	"chan" qualifiedIdent
+|	"chan" fnType
+|	"chan" otherType
+|	"chan" ptrType
 |	"interface" lbrace '}'
+|	"interface" lbrace interfaceDeclList semiOpt '}'
+|	"map" '[' typ ']' typ
+|	"struct" lbrace '}'
+|	"struct" lbrace fieldDeclList semiOpt '}'
+|	'[' "..." ']' typ
+|	'[' exprOpt ']' typ
 
-fndcl:
-	IDENT '(' oarg_type_list_ocomma ')' fnres
-|	'(' oarg_type_list_ocomma ')' IDENT '(' oarg_type_list_ocomma ')' fnres
+ptrType:
+	'*' typ
 
-fntype:
-	"func" '(' oarg_type_list_ocomma ')' fnres
+rxChanType:
+	"<-" "chan" typ
 
-fnbody:
-|	'{' stmt_list '}'
+fnType:
+	"func" '(' paramTypeListCommaOptOpt ')' result
 
-fnres:
+fnBody:
+|	'{' stmtList '}'
+
+result:
 	%prec _NotParen
-|	fnret_type
-|	'(' oarg_type_list_ocomma ')'
+|	'(' paramTypeListCommaOptOpt ')'
+|	qualifiedIdent
+|	fnType
+|	otherType
+|	ptrType
+|	rxChanType
 
-fnliteral:
-	fntype lbrace stmt_list '}'
+varSpecList:
+	varSpec
+|	varSpecList ';' varSpec
 
-xdcl_list:
-|	xdcl_list xdcl ';'
+constSpecList:
+	constSpec
+|	constSpecList ';' constSpec
 
-vardcl_list:
-	vardcl
-|	vardcl_list ';' vardcl
+typeSpecList:
+	typeSpec
+|	typeSpecList ';' typeSpec
 
-constdcl_list:
-	constdcl1
-|	constdcl_list ';' constdcl1
+fieldDeclList:
+	fieldDecl
+|	fieldDeclList ';' fieldDecl
 
-typedcl_list:
-	typedcl
-|	typedcl_list ';' typedcl
+interfaceDeclList:
+	interfaceDecl
+|	interfaceDeclList ';' interfaceDecl
 
-structdcl_list:
-	structdcl
-|	structdcl_list ';' structdcl
+fieldDecl:
+	'*' embededName literalOpt
+|	identList typ literalOpt
+|	embededName literalOpt
 
-interfacedcl_list:
-	interfacedcl
-|	interfacedcl_list ';' interfacedcl
-
-structdcl:
-	ident_list type oliteral
-|	packname oliteral
-|	'*' packname oliteral
-
-packname:
+embededName:
 	IDENT
 |	IDENT '.' IDENT
 
-interfacedcl:
-	IDENT '(' oarg_type_list_ocomma ')' fnres
-|	packname
+interfaceDecl:
+	IDENT '(' paramTypeListCommaOptOpt ')' result
+|	embededName
 
-arg_type:
-	type
-|	IDENT type
-|	IDENT dotdotdot
-|	dotdotdot
+paramType:
+	IDENT dddType
+|	IDENT typ
+|	dddType
+|	typ
 
-arg_type_list:
-	arg_type
-|	arg_type_list ',' arg_type
+paramTypeList:
+	paramType
+|	paramTypeList ',' paramType
 
-oarg_type_list_ocomma:
-|	arg_type_list ocomma
+paramTypeListCommaOptOpt:
+|	paramTypeList commaOpt
 
 stmt:
-|	compound_stmt
-|	common_dcl
-|	non_dcl_stmt
-
-non_dcl_stmt:
-	simple_stmt
-|	for_stmt
-|	switch_stmt
-|	select_stmt
-|	if_stmt
-|	IDENT ':' stmt
+|	"break" identOpt
+|	"continue" identOpt
+|	"defer" primaryExpr
 |	"fallthrough"
-|	"break" oident
-|	"continue" oident
-|	"go" pseudocall
-|	"defer" pseudocall
+|	"for" "range" expr loopBody
+|	"for" exprList ":=" "range" expr loopBody
+|	"for" exprList '=' "range" expr loopBody
+|	"for" simpleStmtOpt ';' simpleStmtOpt ';' simpleStmtOpt loopBody
+|	"for" simpleStmtOpt loopBody
+|	"go" primaryExpr
 |	"goto" IDENT
-|	"return" oexpr_list
+|	"if" ifHeader loopBody elseIfList
+|	"if" ifHeader loopBody elseIfList "else" compoundStmt
+|	"return"
+|	"return" exprList
+|	"select" BODY caseBlockList '}'
+|	"switch" ifHeader BODY caseBlockList '}'
+|	IDENT ':' stmt
+|	commonDecl
+|	compoundStmt
+|	simpleStmt
 
-stmt_list:
+stmtList:
 	stmt
-|	stmt_list ';' stmt
+|	stmtList ';' stmt
 
-ident_list:
+identList:
 	IDENT
-|	ident_list ',' IDENT
+|	identList ',' IDENT
 
-expr_list:
+exprList:
 	expr
-|	expr_list ',' expr
+|	exprList ',' expr
 
-expr_or_type_list:
-	expr_or_type
-|	expr_or_type_list ',' expr_or_type
+exprOrTypeList:
+	exprOrType
+|	exprOrTypeList ',' exprOrType
 
-keyval_list:
-	keyval
-|	complitexpr
-|	keyval_list ',' keyval
-|	keyval_list ',' complitexpr
+keyValList:
+	keyVal
+|	keyValList ',' keyVal
 
-braced_keyval_list:
-|	keyval_list ocomma
+bracedKeyValList:
+|	keyValList commaOpt
 
-osemi:
+semiOpt:
 |	';'
 
-ocomma:
+commaOpt:
 |	','
 
-oexpr:
+exprOpt:
 |	expr
 
-oexpr_list:
-|	expr_list
+simpleStmtOpt:
+|	simpleStmt
 
-osimple_stmt:
-|	simple_stmt
-
-oliteral:
+literalOpt:
 |	literal
 
 literal:
-	INT
+	CHAR
 |	FLOAT
 |	IMAG
-|	CHAR
+|	INT
 |	STRING
-
-asop:
-	"+="
-|	"&^="
-|	"&="
-|	"/="
-|	"<<="
-|	"%="
-|	"*="
-|	"|="
-|	">>="
-|	"-="
-|	"^="
