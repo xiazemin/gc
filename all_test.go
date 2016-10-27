@@ -16,6 +16,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"runtime/debug"
 	"sort"
@@ -25,6 +26,7 @@ import (
 	"github.com/cznic/lex"
 	dfa "github.com/cznic/lexer"
 	"github.com/cznic/mathutil"
+	"github.com/cznic/sortutil"
 	"github.com/cznic/y"
 	"github.com/edsrzf/mmap-go"
 )
@@ -65,6 +67,9 @@ func use(...interface{}) {}
 
 func init() {
 	use(caller, dbg, TODO, (*parser).todo, stack) //TODOOK
+	if !strings.HasPrefix(runtime.Version(), "go1.7") {
+		panic("incompatible Go version, must update code for token.ALIAS")
+	}
 }
 
 // ============================================================================
@@ -83,9 +88,18 @@ type yParser struct {
 }
 
 var (
-	oN = flag.Int("N", -1, "")
-	_  = flag.String("out", "", "where to put y.output") //TODOOK
-	_  = flag.Bool("closures", false, "closures")        //TODOOK
+	_   = flag.Bool("closures", false, "closures")        //TODOOK
+	_   = flag.String("out", "", "where to put y.output") //TODOOK
+	oN  = flag.Int("N", -1, "")
+	oRE = flag.String("re", "", "regexp")
+
+	errCheckCompileDir  = []byte("// compiledir")
+	errCheckDisbled     = []byte("////")
+	errCheckMark1       = []byte("// ERROR ")
+	errCheckMark2       = []byte("// GC_ERROR ")
+	errCheckPatterns    = regexp.MustCompile(`"([^"]*)"`)
+	generalCommentEnd   = []byte("*/")
+	generalCommentStart = []byte("/*")
 
 	lexL = func() *lex.L {
 		lf, err := os.Open(lexFile)
@@ -149,7 +163,7 @@ var (
 
 		m := make(map[token.Token]*y.Symbol, len(p.Syms))
 		for k, v := range p.Syms {
-			if !v.IsTerminal || k == "BODY" || k[0] == '_' {
+			if !v.IsTerminal || k == "BODY" || k == "ALIAS" || k[0] == '_' {
 				continue
 			}
 
@@ -179,6 +193,7 @@ var (
 		}
 		m[token.EOF] = p.Syms["$end"]
 		m[tokenBODY] = p.Syms["BODY"]
+		m[tokenALIAS] = p.Syms["ALIAS"]
 		var t []*y.Symbol
 		for _, v := range p.Syms {
 			if v.IsTerminal {
@@ -238,6 +253,30 @@ var (
 			for _, v := range p.TestGoFiles {
 				r = append(r, filepath.Join(p.Dir, v))
 			}
+			return nil
+		}); err != nil {
+			panic(err)
+		}
+
+		return r[:len(r):len(r)]
+	}()
+
+	errchkFiles = func() (r []string) {
+		if err := filepath.Walk(filepath.Join("testdata", "errchk"), func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if info.IsDir() {
+				return nil
+			}
+
+			if base := filepath.Base(path); strings.HasPrefix(base, ".") ||
+				!strings.HasSuffix(base, ".go") {
+				return nil
+			}
+
+			r = append(r, path)
 			return nil
 		}); err != nil {
 			panic(err)
@@ -344,6 +383,8 @@ func testScannerStates(t *testing.T) {
 				// nop
 			case classNonASCII:
 				src += "á"
+			case classBOM:
+				continue
 			default:
 				src += string(c)
 			}
@@ -369,6 +410,10 @@ func testScannerStates(t *testing.T) {
 				l.errorCount = 0
 				ss.ErrorCount = 0
 				ofs, tok := l.scan()
+				if tok == tokenALIAS && strings.HasPrefix(runtime.Version(), "go1.7") { //TODO- when 1.8 is out
+					break
+				}
+
 				pos := tf.Pos(ofs)
 				lit := string(l.lit)
 				pos2, tok2, lit2 := ss.Scan()
@@ -388,8 +433,14 @@ func testScannerStates(t *testing.T) {
 						)
 					}
 					if g, e := tok, tok2; g != e {
+						// Whitelist cases like "f..3", go/scanner differs from the compiler lexer.
+						if tok == token.PERIOD && tok2 == token.ILLEGAL && lit == "." && strings.Index(src, "..") >= 0 {
+							break
+						}
+
 						nerr++
 						t.Errorf("%6d: tok[%d] %q(|% x|) %s %s", iCase, i, src, src, g, e)
+
 					}
 					if l.errorCount+ss.ErrorCount != 0 || tok == token.ILLEGAL {
 						continue
@@ -557,6 +608,7 @@ func testScanner(t *testing.T, paths []string) {
 	sum := 0
 	toks := 0
 	files := 0
+outer:
 	for _, path := range paths {
 		src, err := ioutil.ReadFile(path)
 		if err != nil {
@@ -569,42 +621,104 @@ func testScanner(t *testing.T, paths []string) {
 		var se scanner.ErrorList
 		f.SetLinesForContent(src)
 		l.init(src)
+		l.commentHandler = func(ofs int, lit []byte) {
+			if bytes.HasPrefix(lit, lineDirective) {
+				n := len(lit)
+				lit = bytes.TrimSpace(lit[len(lineDirective):])
+				if i := bytes.IndexByte(lit, ':'); i > 0 && i < len(lit)-1 {
+					fn := lit[:i]
+					ln := 0
+					for _, c := range lit[i+1:] {
+						if c >= '0' && c <= '9' {
+							ln = 10*ln + int(c-'0')
+							continue
+						}
+
+						return
+					}
+					s := filepath.Clean(string(fn))
+					if !filepath.IsAbs(s) {
+						s = filepath.Join(filepath.Dir(path), s)
+					}
+					f.AddLineInfo(ofs+n+1, s, ln)
+				}
+			}
+		}
 		l.errHandler = func(ofs int, msg string, arg ...interface{}) {
 			se.Add(f.Position(f.Pos(ofs)), fmt.Sprintf(msg, arg...))
 		}
 		s.Init(f2, src, nil, 0)
 		files++
 		for {
+			l.errorCount = 0
+			s.ErrorCount = 0
+
 			ofs, gt := l.scan()
+			if gt == tokenBOM {
+				gt = token.ILLEGAL
+			}
+			if gt == tokenALIAS && strings.HasPrefix(runtime.Version(), "go1.7") { //TODO- when 1.8 is out
+				break
+			}
+
 			toks++
 			glit := string(l.lit)
 			pos, et, lit := s.Scan()
 			position := f2.Position(pos)
 			if g, e := f.Position(f.Pos(ofs)), position; g != e {
-				t.Fatalf("%s: position mismatch, expected %s", g, e)
+				t.Errorf("%s: position mismatch, expected %s", g, e)
+				continue outer
 			}
 
-			if l.errorCount != 0 {
-				t.Fatal(se)
+			if l.errorCount != 0 && s.ErrorCount == 0 {
+				t.Error(errString(se))
+				continue outer
 			}
 
 			if gt == token.EOF {
 				if et != token.EOF {
-					t.Fatalf("%s: unexpected eof", position)
+					t.Errorf("%s: unexpected eof", position)
+					continue outer
 				}
 
 				break
 			}
 
 			if g, e := gt, et; g != e {
-				t.Fatalf("%s: token mismatch %q %q", position, g, e)
+				// Whitelist cases like
+				//	testdata/errchk/gc/fixedbugs/issue11359.go:11:5: token mismatch "IDENT" "ILLEGAL"
+				if gt == token.IDENT && et == token.ILLEGAL && strings.HasPrefix(path, "testdata") {
+					continue outer
+				}
+
+				// Whitelist cases like
+				//	testdata/errchk/gc/syntax/ddd.go:10:5: token mismatch "." "ILLEGAL"
+				if gt == token.PERIOD && et == token.ILLEGAL && strings.HasPrefix(path, "testdata") {
+					continue outer
+				}
+
+				t.Errorf("%s: token mismatch %q %q", position, g, e)
+				continue outer
 			}
 
 			if lit == "" {
 				lit = gt.String()
 			}
 			if g, e := glit, lit; g != e {
-				t.Fatalf("%s: literal mismatch %q %q", position, g, e)
+				// Whitelist cases like
+				//	testdata/errchk/gc/fixedbugs/bug163.go:10:2: literal mismatch "x⊛y" "x"
+				if gt == token.IDENT && strings.HasPrefix(glit, lit) && strings.HasPrefix(path, "testdata") {
+					continue outer
+				}
+
+				// Whitelist cases like
+				//	testdata/errchk/gc/syntax/ddd.go:10:5: literal mismatch ".." "ILLEGAL"
+				if glit == ".." && lit == "ILLEGAL" {
+					continue outer
+				}
+
+				t.Errorf("%s: literal mismatch %q %q", position, g, e)
+				continue outer
 			}
 		}
 	}
@@ -614,7 +728,8 @@ func testScanner(t *testing.T, paths []string) {
 func TestScanner(t *testing.T) {
 	_ = t.Run("States", testScannerStates) && //TODOOK
 		t.Run("Bugs", testScannerBugs) &&
-		t.Run("GOROOT", func(*testing.T) { testScanner(t, gorootTestFiles) })
+		t.Run("GOROOT", func(t *testing.T) { testScanner(t, gorootTestFiles) }) &&
+		t.Run("Errchk", func(t *testing.T) { testScanner(t, errchkFiles) })
 }
 
 func BenchmarkScanner(b *testing.B) {
@@ -1344,10 +1459,183 @@ state %3d: %s unexpected error position, got %v expected %v
 	}
 }
 
+func quoteErrMessage(s string) string {
+	return strings.Replace(strings.Replace(s, "\t", "\\t", -1), "\n", "\\n", -1)
+}
+
+type errchk struct {
+	ofs int
+	re  []byte
+}
+
+type errchks []errchk
+
+func (e *errchks) comment(ofs int, s []byte) {
+	if bytes.HasPrefix(s, generalCommentStart) {
+		s = s[len(generalCommentStart):]
+	}
+	if bytes.HasSuffix(s, generalCommentEnd) {
+		s = s[:len(s)-len(generalCommentEnd)]
+	}
+	s = bytes.TrimSpace(s)
+	n := len(errCheckMark1)
+	i := bytes.LastIndex(s, errCheckMark1)
+	j := bytes.LastIndex(s, errCheckDisbled)
+	if i < 0 {
+		i = bytes.LastIndex(s, errCheckMark2)
+		n = len(errCheckMark2)
+		if i < 0 {
+			return // No check found.
+		}
+	}
+
+	if j >= 0 && j < i {
+		return // Check disabled.
+	}
+
+	s = s[i+n:]
+	s = bytes.TrimSpace(s)
+	*e = append(*e, errchk{ofs, s})
+}
+
+func (e errchks) errors(t *testing.T, err scanner.ErrorList, fname string, f *token.File, syntaxOnly bool) {
+	err.Sort()
+	if *oRE != "" {
+		for _, v := range e {
+			t.Log(v)
+		}
+		if len(e) != 0 {
+			t.Logf("FAIL\n%s", errString(err))
+		}
+	}
+
+	got := map[int][]*scanner.Error{}
+	var gota []int
+	for _, v := range err {
+		p := filepath.ToSlash(v.Pos.Filename)
+		if !filepath.IsAbs(p) {
+			line := v.Pos.Line
+			got[line] = append(got[line], v)
+			gota = append(gota, line)
+		}
+	}
+	gota = gota[:sortutil.Dedupe(sort.IntSlice(gota))]
+
+	expect := map[int]errchk{}
+	for _, v := range e {
+		expect[f.Position(f.Pos(v.ofs)).Line] = v
+	}
+
+	var a scanner.ErrorList
+	var fail bool
+outer:
+	for _, line := range gota {
+		matched := false
+		var g0, g *scanner.Error
+		var e errchk
+	inner:
+		for _, g = range got[line] {
+			if g0 == nil {
+				g0 = g
+			}
+			var ok bool
+			if e, ok = expect[line]; !ok {
+				a = append(a, &scanner.Error{Pos: g.Pos, Msg: fmt.Sprintf("[FAIL errorcheck: extra error] %s", quoteErrMessage(g.Msg))})
+				fail = true
+				continue outer
+			}
+
+			for _, v := range errCheckPatterns.FindAllSubmatch(e.re, -1) {
+				re := v[1]
+				ok, err := regexp.MatchString(string(re), strings.SplitN(g.Error(), ": ", 2)[1])
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				if ok {
+					if !syntaxOnly {
+						a = append(a, &scanner.Error{Pos: g.Pos, Msg: fmt.Sprintf("[PASS errorcheck] %s: %s", e.re, quoteErrMessage(g.Msg))})
+					}
+					matched = true
+					break inner
+				}
+			}
+		}
+		if !matched && !syntaxOnly {
+			a = append(a, &scanner.Error{Pos: g.Pos, Msg: fmt.Sprintf("[FAIL errorcheck: error does not match] %s: %s", e.re, quoteErrMessage(g0.Msg))})
+			fail = true
+		}
+		delete(expect, line)
+	}
+	if !fail && (len(expect) == 0 || syntaxOnly) {
+		t.Logf("[PASS errorcheck] %v\n", fname)
+	}
+	if !syntaxOnly {
+		for _, e := range expect {
+			a = append(a, &scanner.Error{Pos: f.Position(f.Pos(e.ofs)), Msg: fmt.Sprintf("[FAIL errorcheck: missing error] %s", e.re)})
+		}
+	}
+	a.Sort()
+	if len(a) != 0 {
+		t.Fatalf("\n%s", errString(a))
+	}
+}
+
+// Verify no syntax error reported for lines w/o the magic [GC_]ERROR comments.
+func testParserErrchk(t *testing.T) {
+	var (
+		checks errchks
+		errors scanner.ErrorList
+		f      *token.File
+		fs     = token.NewFileSet()
+		l      = newLexer(nil)
+		p      = newParser(l)
+	)
+
+	l.commentHandler = checks.comment
+	p.syntaxError = func() {
+		//dbg("\n==== %s: %q=%q %v/%v\n%s", f.Position(f.Pos(p.ofs)), p.c, p.l.lit, p.l.ofs, len(p.l.src), stack())
+		// Whitelist cases like
+		//	testdata/errchk/gc/syntax/semi1.go:14:2: [FAIL errorcheck: extra error] syntax error, lookahead "EOF"=""
+		if p.c == token.EOF || p.l.ofs+1 >= len(p.l.src)-1 {
+			return
+		}
+
+		errors.Add(f.Position(f.Pos(p.ofs)), fmt.Sprintf("syntax error, lookahead %q=%q, p.l.ofs %d/%d", p.c, p.l.lit, p.l.ofs, len(p.l.src)))
+		if i := bytes.Index(p.l.lit, errCheckMark1); p.c == token.CHAR && i > 0 {
+			l.commentHandler(p.ofs+i, p.l.lit[i:])
+		}
+	}
+
+	for _, fn := range errchkFiles {
+		src, err := ioutil.ReadFile(fn)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if bytes.HasPrefix(src, errCheckCompileDir) {
+			continue
+		}
+
+		//dbg("", fn)
+		f = fs.AddFile(fn, -1, len(src))
+		f.SetLinesForContent(src)
+		l.init(src)
+		p.init(l)
+		errors = errors[:0]
+		checks = checks[:0]
+		p.file()
+		for l.c != classEOF {
+			l.scan()
+		}
+		checks.errors(t, errors, fn, f, true)
+	}
+}
+
 func TestParser(t *testing.T) {
 	cover := append(gorootTestFiles, yaccCover)
 	_ = t.Run("Yacc", func(t *testing.T) { testParserYacc(t, cover) }) && //TODOOK
 		t.Run("GOROOT", func(t *testing.T) { testParser(t, cover) }) &&
-		t.Run("RejectFollowSet", testParserRejectFS)
-
+		t.Run("RejectFollowSet", testParserRejectFS) &&
+		t.Run("Errchk", testParserErrchk)
 }

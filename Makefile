@@ -38,7 +38,7 @@ editor:
 	#go build
 
 fuzz:
-	go-fuzz-build -func FuzzLexer github.com/cznic/ngc
+	go-fuzz-build -func FuzzLexer github.com/cznic/gc
 	rm -rf testdata/fuzz/lexer/corpus/ testdata/fuzz/lexer/crashers/ testdata/fuzz/lexer/suppressions/
 	-go-fuzz -bin gc-fuzz.zip -workdir testdata/fuzz/lexer/
 

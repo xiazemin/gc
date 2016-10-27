@@ -5,6 +5,7 @@
 package gc
 
 import (
+	"bytes"
 	"go/token"
 	"unicode/utf8"
 )
@@ -13,6 +14,7 @@ import (
 const (
 	classEOF = iota + 0x80
 	classNonASCII
+	classBOM
 	classNext
 )
 
@@ -26,10 +28,14 @@ const (
 	tokenLTLT // «
 	tokenGTGT // »
 	tokenBODY
+	tokenBOM
+	tokenALIAS //TODO => token.ALIAS for 1.8
 )
 
 var (
-	nlLit = []byte{'\n'}
+	bom           = []byte("\ufeff")
+	lineDirective = []byte("//line")
+	nlLit         = []byte{'\n'}
 
 	semiTriggerTokens = [...]bool{
 		token.BREAK:       true,
@@ -51,34 +57,41 @@ var (
 )
 
 type lexer struct {
-	commentHandler  func(ofs int, lit []byte)
-	commentOfs      int
-	errHandler      func(ofs int, msg string, args ...interface{})
-	errorCount      int // Number of errors encountered.
-	lit             []byte
-	ofs             int // Next byte offset.
-	prev            token.Token
-	src             []byte
-	b               byte // Current byte.
-	c               byte // Current class.
-	noSemiInjection bool
+	commentHandler func(ofs int, lit []byte)
+	commentOfs     int
+	errHandler     func(ofs int, msg string, args ...interface{})
+	errorCount     int // Number of errors encountered.
+	lit            []byte
+	ofs            int // Next byte offset.
+	prev           token.Token
+	src            []byte
+	b              byte // Current byte.
+	c              byte // Current class.
+	//TODO- noSemiInjection bool
 }
 
 func newLexer(src []byte) *lexer {
 	l := &lexer{
 		src: src,
 	}
+	if bytes.HasPrefix(src, bom) {
+		l.ofs = 3
+	}
 	l.n()
 	return l
 }
 
 func (l *lexer) init(src []byte) *lexer {
-	l.src = src
+	l.commentOfs = -1
+	l.errorCount = 0
+	l.lit = nil
+	//TODO- l.noSemiInjection = false
 	l.ofs = 0
 	l.prev = tokenNL
-	l.lit = nil
-	l.commentOfs = -1
-	l.noSemiInjection = false
+	l.src = src
+	if bytes.HasPrefix(src, bom) {
+		l.ofs = 3
+	}
 	l.n()
 	return l
 }
@@ -103,11 +116,122 @@ func (l *lexer) n() byte { // n == next
 	l.ofs++
 	l.c = l.b
 	if l.b > 0x7f {
-		l.c = classNonASCII
+		if l.b != 0xef { // BOM[0]
+			l.c = classNonASCII
+		} else {
+			if l.ofs+1 < len(l.src) && l.src[l.ofs] == 0xbb && l.src[l.ofs+1] == 0xbf {
+				l.err(l.ofs-1, "illegal BOM")
+				l.c = classBOM
+			}
+		}
 	} else if l.b == 0 {
 		l.err(l.ofs-1, "illegal character NUL")
 	}
 	return l.c
+}
+
+func (l *lexer) octals(max int) (n int) {
+	for max != 0 && l.c >= '0' && l.c <= '7' {
+		l.n()
+		n++
+		max--
+	}
+	return n
+}
+
+func (l *lexer) decimals() {
+	for l.c >= '0' && l.c <= '9' {
+		l.n()
+	}
+}
+
+func (l *lexer) exponent() token.Token {
+	switch l.c {
+	case 'e', 'E':
+		switch l.n() {
+		case '+', '-':
+			l.n()
+		}
+		l.decimals()
+	}
+	switch l.c {
+	case 'i':
+		l.n()
+		return token.IMAG
+	}
+
+	return token.FLOAT
+}
+
+func (l *lexer) hexadecimals(max int) (n int) {
+	for max != 0 && (l.c >= '0' && l.c <= '9' || l.c >= 'a' && l.c <= 'f' || l.c >= 'A' && l.c <= 'F') {
+		l.n()
+		n++
+		max--
+	}
+	return n
+}
+
+func isIdentNext(c byte) bool {
+	return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_' || c >= '0' && c <= '9' || c == classNonASCII
+}
+
+func (l *lexer) ident() token.Token {
+	for l.c >= 'a' && l.c <= 'z' || l.c >= 'A' && l.c <= 'Z' || l.c == '_' || l.c >= '0' && l.c <= '9' || l.c == classNonASCII {
+		l.n()
+	}
+	return token.IDENT
+}
+
+func (l *lexer) skip() rune {
+	if c := l.c; c < 0x80 {
+		l.n()
+		return rune(c)
+	}
+
+	if l.c == classEOF {
+		return -1
+	}
+
+	r, sz := utf8.DecodeRune(l.src[l.ofs-1:])
+	l.ofs += sz - 1
+	l.n()
+	return r
+}
+
+func (l *lexer) stringEscFail() bool {
+	switch l.c {
+	case '\n':
+		l.err(l.ofs-1, "illegal character %#U in escape sequence", l.c)
+	case '"':
+		l.err(l.ofs-1, "illegal character %#U in escape sequence", l.c)
+		l.n()
+		return true
+	case '\\':
+		l.err(l.ofs-1, "illegal character %#U in escape sequence", l.c)
+		fallthrough
+	case classEOF:
+		l.err(l.ofs, "escape sequence not terminated")
+	default:
+		l.err(l.ofs-1, "illegal character %#U in escape sequence", l.skip())
+	}
+	return false
+}
+
+func (l *lexer) charEscFail(ofs int) (int, token.Token) {
+	switch l.c {
+	case '\n':
+		l.err(l.ofs-1, "illegal character %#U in escape sequence", l.c)
+	case '\\':
+		l.err(l.ofs-1, "illegal character %#U in escape sequence", l.c)
+		l.n()
+		fallthrough
+	case classEOF:
+		l.err(l.ofs, "escape sequence not terminated")
+	default:
+		l.err(l.ofs-1, "illegal character %#U in escape sequence", l.skip())
+	}
+	return ofs, token.CHAR
 }
 
 func (l *lexer) scan() (ofs int, tok token.Token) {
@@ -130,7 +254,7 @@ skip:
 	co := l.commentOfs
 	l.commentOfs = -1
 	if tok == tokenNL || tok == token.EOF {
-		if p := int(l.prev); !l.noSemiInjection && p >= 0 && p < len(semiTriggerTokens) && semiTriggerTokens[l.prev] {
+		if p := int(l.prev); /*TODO- !l.noSemiInjection && */ p >= 0 && p < len(semiTriggerTokens) && semiTriggerTokens[l.prev] {
 			if co >= 0 {
 				ofs = co
 			}
@@ -303,7 +427,8 @@ skip:
 			l.n()
 		default:
 			l.err(ofs, "rune literal not terminated")
-			l.skip()
+			for l.n() != '\'' && l.c != classEOF && l.c != '\n' {
+			}
 		}
 		return ofs, token.CHAR
 	case '(':
@@ -355,7 +480,8 @@ skip:
 				l.n()
 				return ofs, token.ELLIPSIS
 			default:
-				return ofs, token.ILLEGAL
+				l.ofs--
+				return ofs, token.PERIOD
 			}
 		default:
 			return ofs, token.PERIOD
@@ -486,9 +612,13 @@ skip:
 
 		return ofs, token.LSS
 	case '=':
-		if l.n() == '=' {
+		switch l.n() {
+		case '=':
 			l.n()
 			return ofs, token.EQL
+		case '>':
+			l.n()
+			return ofs, tokenALIAS
 		}
 
 		return ofs, token.ASSIGN
@@ -725,6 +855,9 @@ skip:
 		}
 
 		switch {
+		case l.c == classBOM:
+			l.skip()
+			return ofs, tokenBOM
 		case l.b < ' ':
 			l.err(ofs, "illegal character %U", l.skip())
 		default:
@@ -732,108 +865,4 @@ skip:
 		}
 		return ofs, token.ILLEGAL
 	}
-}
-
-func (l *lexer) octals(max int) (n int) {
-	for max != 0 && l.c >= '0' && l.c <= '7' {
-		l.n()
-		n++
-		max--
-	}
-	return n
-}
-
-func (l *lexer) decimals() {
-	for l.c >= '0' && l.c <= '9' {
-		l.n()
-	}
-}
-
-func (l *lexer) exponent() token.Token {
-	switch l.c {
-	case 'e', 'E':
-		switch l.n() {
-		case '+', '-':
-			l.n()
-		}
-		l.decimals()
-	}
-	switch l.c {
-	case 'i':
-		l.n()
-		return token.IMAG
-	}
-
-	return token.FLOAT
-}
-
-func (l *lexer) hexadecimals(max int) (n int) {
-	for max != 0 && (l.c >= '0' && l.c <= '9' || l.c >= 'a' && l.c <= 'f' || l.c >= 'A' && l.c <= 'F') {
-		l.n()
-		n++
-		max--
-	}
-	return n
-}
-
-func isIdentNext(c byte) bool {
-	return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_' || c >= '0' && c <= '9' || c == classNonASCII
-}
-
-func (l *lexer) ident() token.Token {
-	for l.c >= 'a' && l.c <= 'z' || l.c >= 'A' && l.c <= 'Z' || l.c == '_' || l.c >= '0' && l.c <= '9' || l.c == classNonASCII {
-		l.n()
-	}
-	return token.IDENT
-}
-
-func (l *lexer) skip() rune {
-	if c := l.c; c < 0x80 {
-		l.n()
-		return rune(c)
-	}
-
-	if l.c == classEOF {
-		return -1
-	}
-
-	r, sz := utf8.DecodeRune(l.src[l.ofs-1:])
-	l.ofs += sz - 1
-	l.n()
-	return r
-}
-
-func (l *lexer) stringEscFail() bool {
-	switch l.c {
-	case '\n':
-		l.err(l.ofs-1, "illegal character %#U in escape sequence", l.c)
-	case '"':
-		l.err(l.ofs-1, "illegal character %#U in escape sequence", l.c)
-		l.n()
-		return true
-	case '\\':
-		l.err(l.ofs-1, "illegal character %#U in escape sequence", l.c)
-		fallthrough
-	case classEOF:
-		l.err(l.ofs, "escape sequence not terminated")
-	default:
-		l.err(l.ofs-1, "illegal character %#U in escape sequence", l.skip())
-	}
-	return false
-}
-
-func (l *lexer) charEscFail(ofs int) (int, token.Token) {
-	switch l.c {
-	case '\n':
-		l.err(l.ofs-1, "illegal character %#U in escape sequence", l.c)
-	case '\\':
-		l.err(l.ofs-1, "illegal character %#U in escape sequence", l.c)
-		l.n()
-		fallthrough
-	case classEOF:
-		l.err(l.ofs, "escape sequence not terminated")
-	default:
-		l.err(l.ofs-1, "illegal character %#U in escape sequence", l.skip())
-	}
-	return ofs, token.CHAR
 }

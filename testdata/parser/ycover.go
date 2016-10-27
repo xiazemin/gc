@@ -20,3 +20,10 @@ type _ [(<-chan func())]_
 type _ [chan _('a',)]_
 type _ chan(_)
 var ()
+
+//TODO- when 1.8 is out
+
+const _ => _._
+func _ => _._
+type _ => _._
+var _ => _._

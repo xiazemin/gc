@@ -1,0 +1,9 @@
+commit 2481481ff798636907376bfdf7e8c7558b8b930e
+Author: Alexander Morozov <lk4d4math@gmail.com>
+Date:   Tue Oct 25 14:37:54 2016 -0700
+
+    runtime: fix comments in time.go
+    
+    Change-Id: I5c501f598f41241e6d7b21d98a126827a3c3ad9a
+    Reviewed-on: https://go-review.googlesource.com/32018
+    Reviewed-by: Ian Lance Taylor <iant@golang.org>
