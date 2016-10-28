@@ -219,6 +219,8 @@ var (
 			m[s] = i
 		}
 		m["ILLEGAL"] = token.ILLEGAL
+		m["«"] = tokenLTLT
+		m["»"] = tokenGTGT
 		return m
 	}()
 
@@ -365,6 +367,10 @@ func testScannerStates(t *testing.T) {
 				}
 			case *dfa.RuneEdge:
 				c := x.Rune
+				if c >= classNext {
+					continue
+				}
+
 				if next[c] != nil {
 					panic("internal error")
 				}
@@ -383,8 +389,8 @@ func testScannerStates(t *testing.T) {
 				// nop
 			case classNonASCII:
 				src += "á"
-			case classBOM:
-				continue
+			case classLTLT, classGTGT, classBOM:
+				src += "@"
 			default:
 				src += string(c)
 			}
@@ -434,7 +440,7 @@ func testScannerStates(t *testing.T) {
 					}
 					if g, e := tok, tok2; g != e {
 						// Whitelist cases like "f..3", go/scanner differs from the compiler lexer.
-						if tok == token.PERIOD && tok2 == token.ILLEGAL && lit == "." && strings.Index(src, "..") >= 0 {
+						if tok == token.PERIOD && tok2 == token.ILLEGAL && lit == "." && strings.Contains(src, "..") {
 							break
 						}
 
@@ -500,7 +506,7 @@ func testScannerBugs(t *testing.T) {
 		{" za ", toks{{1, "1:2", token.IDENT, "za"}, {4, "1:5", token.SEMICOLON, "\n"}}},
 		{" za", toks{{1, "1:2", token.IDENT, "za"}, {3, "1:4", token.SEMICOLON, "\n"}}},
 		{" « ", toks{{1, "1:2", tokenLTLT, "«"}}},
-		{" » ", toks{{1, "1:2", tokenGTGT, "»"}}},
+		{" » ", toks{{1, "1:2", tokenGTGT, "»"}, {4, "1:5", token.SEMICOLON, "\n"}}},
 		{"", nil},
 		{"'\\U00000000'!", toks{{0, "1:1", token.CHAR, "'\\U00000000'"}, {12, "1:13", token.NOT, "!"}}},
 		{"'\\U00000000'", toks{{0, "1:1", token.CHAR, "'\\U00000000'"}, {12, "1:13", token.SEMICOLON, "\n"}}},
@@ -541,6 +547,8 @@ func testScannerBugs(t *testing.T) {
 		{"a/*\n*//**/", toks{{0, "1:1", token.IDENT, "a"}, {1, "1:2", token.SEMICOLON, "\n"}}},
 		{"a//", toks{{0, "1:1", token.IDENT, "a"}, {1, "1:2", token.SEMICOLON, "\n"}}},
 		{"a//\n", toks{{0, "1:1", token.IDENT, "a"}, {1, "1:2", token.SEMICOLON, "\n"}}},
+		{"a«z", toks{{0, "1:1", token.IDENT, "a"}, {1, "1:2", tokenLTLT, "«"}, {3, "1:4", token.IDENT, "z"}, {4, "1:5", token.SEMICOLON, "\n"}}},
+		{"a»z", toks{{0, "1:1", token.IDENT, "a"}, {1, "1:2", tokenGTGT, "»"}, {3, "1:4", token.IDENT, "z"}, {4, "1:5", token.SEMICOLON, "\n"}}},
 		{"d/*\\\n*/0", toks{{0, "1:1", token.IDENT, "d"}, {1, "1:2", token.SEMICOLON, "\n"}, {7, "2:3", token.INT, "0"}, {8, "2:4", token.SEMICOLON, "\n"}}},
 		{"import ( ", toks{{0, "1:1", token.IMPORT, "import"}, {7, "1:8", token.LPAREN, "("}}},
 		{"import (", toks{{0, "1:1", token.IMPORT, "import"}, {7, "1:8", token.LPAREN, "("}}},
@@ -553,7 +561,13 @@ func testScannerBugs(t *testing.T) {
 		{"za wa", toks{{0, "1:1", token.IDENT, "za"}, {3, "1:4", token.IDENT, "wa"}, {5, "1:6", token.SEMICOLON, "\n"}}},
 		{"za", toks{{0, "1:1", token.IDENT, "za"}, {2, "1:3", token.SEMICOLON, "\n"}}},
 		{"«", toks{{0, "1:1", tokenLTLT, "«"}}},
-		{"»", toks{{0, "1:1", tokenGTGT, "»"}}},
+		{"«a", toks{{0, "1:1", tokenLTLT, "«"}, {2, "1:3", token.IDENT, "a"}, {3, "1:4", token.SEMICOLON, "\n"}}},
+		{"««", toks{{0, "1:1", tokenLTLT, "«"}, {2, "1:3", tokenLTLT, "«"}}},
+		{"«»", toks{{0, "1:1", tokenLTLT, "«"}, {2, "1:3", tokenGTGT, "»"}, {4, "1:5", token.SEMICOLON, "\n"}}},
+		{"»", toks{{0, "1:1", tokenGTGT, "»"}, {2, "1:3", token.SEMICOLON, "\n"}}},
+		{"»a", toks{{0, "1:1", tokenGTGT, "»"}, {2, "1:3", token.IDENT, "a"}, {3, "1:4", token.SEMICOLON, "\n"}}},
+		{"»«", toks{{0, "1:1", tokenGTGT, "»"}, {2, "1:3", tokenLTLT, "«"}}},
+		{"»»", toks{{0, "1:1", tokenGTGT, "»"}, {2, "1:3", tokenGTGT, "»"}, {4, "1:5", token.SEMICOLON, "\n"}}},
 	} {
 		if n >= 0 && i != n {
 			continue
@@ -694,6 +708,12 @@ outer:
 				// Whitelist cases like
 				//	testdata/errchk/gc/syntax/ddd.go:10:5: token mismatch "." "ILLEGAL"
 				if gt == token.PERIOD && et == token.ILLEGAL && strings.HasPrefix(path, "testdata") {
+					continue outer
+				}
+
+				// Whitelist cases like
+				//	testdata/errchk/issue15292/0.go:33:12: token mismatch "token(87)" "ILLEGAL"
+				if (gt == tokenLTLT || gt == tokenGTGT) && et == token.ILLEGAL && strings.HasPrefix(path, "testdata") {
 					continue outer
 				}
 
@@ -888,7 +908,8 @@ func BenchmarkScanner(b *testing.B) {
 
 func BenchmarkParser(b *testing.B) {
 	l := newLexer(nil)
-	p := newParser(l)
+	sf := newSourceFile(nil)
+	p := newParser(nil, l)
 
 	b.Run("Shootout", func(b *testing.B) {
 		src, err := ioutil.ReadFile(filepath.Join(runtime.GOROOT(), "src", "go", "parser", "parser.go"))
@@ -900,7 +921,8 @@ func BenchmarkParser(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			l.init(src)
-			p.init(l)
+			sf.init(nil)
+			p.init(sf, l)
 			p.file()
 		}
 	})
@@ -918,7 +940,8 @@ func BenchmarkParser(b *testing.B) {
 
 				sum += len(src)
 				l.init(src)
-				p.init(l)
+				sf.init(nil)
+				p.init(sf, l)
 				p.file()
 			}
 		}
@@ -944,7 +967,8 @@ func BenchmarkParser(b *testing.B) {
 
 				sum += len(src)
 				l.init(src)
-				p.init(l)
+				sf.init(nil)
+				p.init(sf, l)
 				p.file()
 				src.Unmap()
 				f0.Close()
@@ -968,7 +992,7 @@ func BenchmarkParser(b *testing.B) {
 
 					sum += len(src)
 					l := newLexer(src)
-					p := newParser(l)
+					p := newParser(newSourceFile(nil), l)
 					p.file()
 					c <- nil
 				}(v)
@@ -1006,7 +1030,7 @@ func BenchmarkParser(b *testing.B) {
 
 					sum += len(src)
 					l := newLexer(src)
-					p := newParser(l)
+					p := newParser(newSourceFile(nil), l)
 					p.file()
 					c <- nil
 				}(v)
@@ -1409,7 +1433,7 @@ func testParser(t *testing.T, files []string) {
 		f = fs.AddFile(path, -1, len(src))
 		f.SetLinesForContent(src)
 		l.init(src)
-		p = newParser(l)
+		p = newParser(newSourceFile(nil), l)
 		p.syntaxError = p.testSyntaxError
 		p.file()
 	}
@@ -1418,7 +1442,8 @@ func testParser(t *testing.T, files []string) {
 func testParserRejectFS(t *testing.T) {
 	yp := newYParser(nil, nil)
 	l := newLexer(nil)
-	p := newParser(l)
+	sf := newSourceFile(nil)
+	p := newParser(nil, l)
 	for state, s := range yp0.States {
 		syms, _ := s.Syms0()
 		var a []string
@@ -1438,7 +1463,8 @@ func testParserRejectFS(t *testing.T) {
 
 			s := s0 + yp.sym2str(sym) + "@"
 			l.init([]byte(s))
-			p.init(l)
+			sf.init(nil)
+			p.init(sf, l)
 			ofs := -1
 			p.syntaxError = func() {
 				if ofs < 0 {
@@ -1568,7 +1594,7 @@ outer:
 		delete(expect, line)
 	}
 	if !fail && (len(expect) == 0 || syntaxOnly) {
-		t.Logf("[PASS errorcheck] %v\n", fname)
+		//t.Logf("[PASS errorcheck] %v\n", fname)
 	}
 	if !syntaxOnly {
 		for _, e := range expect {
@@ -1589,7 +1615,8 @@ func testParserErrchk(t *testing.T) {
 		f      *token.File
 		fs     = token.NewFileSet()
 		l      = newLexer(nil)
-		p      = newParser(l)
+		p      = newParser(nil, l)
+		sf     = newSourceFile(nil)
 	)
 
 	l.commentHandler = checks.comment
@@ -1621,7 +1648,8 @@ func testParserErrchk(t *testing.T) {
 		f = fs.AddFile(fn, -1, len(src))
 		f.SetLinesForContent(src)
 		l.init(src)
-		p.init(l)
+		sf.init(nil)
+		p.init(sf, l)
 		errors = errors[:0]
 		checks = checks[:0]
 		p.file()

@@ -21,6 +21,13 @@ type _ [chan _('a',)]_
 type _ chan(_)
 var ()
 
+// issue 15292.
+
+type _«_» _
+type _«_,» _«_»
+type _«_» _«_,»
+type _«_» _«_,_,»
+
 //TODO- when 1.8 is out
 
 const _ => _._

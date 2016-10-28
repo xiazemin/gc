@@ -5,7 +5,7 @@
 .PHONY:	all clean cover cpu editor internalError later mem nuke todo edit fuzz fuzz2 fuzz-more
 
 grep=--include=*.go --include=*.l --include=*.y --include=*.yy
-ngrep='TODOOK\|.*_string\.go'
+ngrep='TODOOK\|.*_string\.go\|testdata/errchk'
 
 all: editor
 	go vet 2>&1 | grep -v $(ngrep) || true
@@ -20,7 +20,7 @@ all: editor
 
 clean:
 	go clean
-	rm -f *~ *.test *.out gc-fuzz.zip
+	rm -f *~ *.test *.out gc-fuzz.zip y.output
 
 cover:
 	t=$(shell tempfile) ; go test -coverprofile $$t && go tool cover -html $$t && unlink $$t
@@ -32,7 +32,7 @@ cpu: clean
 edit:
 	@2>/dev/null gvim -p Makefile testdata/scanner/scanner.l testdata/parser/parser.y *.go
 
-editor:
+editor: declarationkind_string.go
 	gofmt -l -s -w *.go
 	go test 2>&1 | tee log
 	#go build
@@ -61,6 +61,9 @@ mem: clean
 
 nuke: clean
 	go clean -i
+
+declarationkind_string.go: enum.go
+	stringer -type DeclarationKind
 
 todo:
 	@grep -nr $(grep) ^[[:space:]]*_[[:space:]]*=[[:space:]][[:alpha:]][[:alnum:]]* * | grep -v $(ngrep) || true

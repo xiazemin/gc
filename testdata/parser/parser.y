@@ -27,10 +27,12 @@
 	ELLIPSIS	"..."
 	EQL		"=="
 	GEQ		">="
+	GTGT		"»"
 	INC		"++"
 	LAND		"&&"
 	LEQ		"<="
 	LOR		"||"
+	LTLT		"«"
 	MUL_ASSIGN	"*="
 	NEQ		"!="
 	OR_ASSIGN	"|="
@@ -108,8 +110,8 @@ importSpec:
 |	STRING
 
 topLevelDeclList:
-|	topLevelDeclList "func" '(' paramTypeListCommaOptOpt ')' IDENT '(' paramTypeListCommaOptOpt ')' result fnBody ';'
-|	topLevelDeclList "func" IDENT '(' paramTypeListCommaOptOpt ')' result fnBody ';'
+|	topLevelDeclList "func" '(' paramTypeListCommaOptOpt ')' IDENT genericParamsOpt '(' paramTypeListCommaOptOpt ')' result fnBody ';'
+|	topLevelDeclList "func" IDENT genericParamsOpt '(' paramTypeListCommaOptOpt ')' result fnBody ';'
 |	topLevelDeclList "func" aliasSpec ';'
 |	topLevelDeclList commonDecl ';'
 
@@ -141,8 +143,14 @@ constSpec:
 |	identList typ
 |	identList typ '=' exprList
 
+genericArgsOpt:
+|	"«" typeList commaOpt "»"
+
+genericParamsOpt:
+|	"«" identList commaOpt "»"
+
 typeSpec:
-	IDENT typ
+	IDENT genericParamsOpt typ
 |	aliasSpec
 
 simpleStmt:
@@ -225,7 +233,7 @@ compLitExpr:
 
 primaryExpr:
 	'(' exprOrType ')'
-|	IDENT %prec _NotParen
+|	IDENT genericArgsOpt %prec _NotParen
 |	convType '(' expr commaOpt ')'
 |	fnType lbrace stmtList '}'
 |	literal
@@ -257,11 +265,15 @@ dddType:
 
 typ:
 	'(' typ ')'
-|	qualifiedIdent
+|	qualifiedIdent genericArgsOpt
 |	fnType
 |	otherType
 |	ptrType
 |	rxChanType
+
+typeList:
+	typ
+|	typeList ',' typ
 
 nonExprType:
 	'*' nonExprType
@@ -307,7 +319,7 @@ fnBody:
 result:
 	%prec _NotParen
 |	'(' paramTypeListCommaOptOpt ')'
-|	qualifiedIdent
+|	qualifiedIdent genericArgsOpt
 |	fnType
 |	otherType
 |	ptrType

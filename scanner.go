@@ -14,6 +14,8 @@ import (
 const (
 	classEOF = iota + 0x80
 	classNonASCII
+	classLTLT
+	classGTGT
 	classBOM
 	classNext
 )
@@ -53,6 +55,7 @@ var (
 		token.RETURN:      true,
 		token.RPAREN:      true,
 		token.STRING:      true,
+		tokenGTGT:         true,
 	}
 )
 
@@ -67,7 +70,6 @@ type lexer struct {
 	src            []byte
 	b              byte // Current byte.
 	c              byte // Current class.
-	//TODO- noSemiInjection bool
 }
 
 func newLexer(src []byte) *lexer {
@@ -85,7 +87,6 @@ func (l *lexer) init(src []byte) *lexer {
 	l.commentOfs = -1
 	l.errorCount = 0
 	l.lit = nil
-	//TODO- l.noSemiInjection = false
 	l.ofs = 0
 	l.prev = tokenNL
 	l.src = src
@@ -116,9 +117,18 @@ func (l *lexer) n() byte { // n == next
 	l.ofs++
 	l.c = l.b
 	if l.b > 0x7f {
-		if l.b != 0xef { // BOM[0]
-			l.c = classNonASCII
-		} else {
+		l.c = classNonASCII
+		switch l.b {
+		case 0xc2: // {"«","»"}[0]
+			if l.ofs < len(l.src) {
+				switch l.src[l.ofs] {
+				case 0xab:
+					l.c = classLTLT
+				case 0xbb:
+					l.c = classGTGT
+				}
+			}
+		case 0xef: // BOM[0]
 			if l.ofs+1 < len(l.src) && l.src[l.ofs] == 0xbb && l.src[l.ofs+1] == 0xbf {
 				l.err(l.ofs-1, "illegal BOM")
 				l.c = classBOM
@@ -254,7 +264,7 @@ skip:
 	co := l.commentOfs
 	l.commentOfs = -1
 	if tok == tokenNL || tok == token.EOF {
-		if p := int(l.prev); /*TODO- !l.noSemiInjection && */ p >= 0 && p < len(semiTriggerTokens) && semiTriggerTokens[l.prev] {
+		if p := int(l.prev); p >= 0 && p < len(semiTriggerTokens) && semiTriggerTokens[l.prev] {
 			if co >= 0 {
 				ofs = co
 			}
@@ -833,19 +843,16 @@ skip:
 		return ofs, token.RBRACE
 	case classEOF:
 		return ofs, token.EOF
+	case classLTLT:
+		l.skip()
+		return ofs, tokenLTLT
+	case classGTGT:
+		l.skip()
+		return ofs, tokenGTGT
+	case classBOM:
+		l.skip()
+		return ofs, tokenBOM
 	default:
-		if l.b == 0xc2 && l.ofs < len(l.src) { // {"«","»"}[0].
-			l.n()
-			switch l.b {
-			case 0xab:
-				l.n()
-				return ofs, tokenLTLT
-			case 0xbb:
-				l.n()
-				return ofs, tokenGTGT
-			}
-		}
-
 		if l.c >= 'a' && l.c <= 'z' || l.c >= 'A' && l.c <= 'Z' || l.c == '_' || l.c == classNonASCII {
 			l.n()
 			for l.c >= 'a' && l.c <= 'z' || l.c >= 'A' && l.c <= 'Z' || l.c == '_' || l.c >= '0' && l.c <= '9' || l.c == classNonASCII {
@@ -855,9 +862,6 @@ skip:
 		}
 
 		switch {
-		case l.c == classBOM:
-			l.skip()
-			return ofs, tokenBOM
 		case l.b < ' ':
 			l.err(ofs, "illegal character %U", l.skip())
 		default:

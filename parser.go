@@ -15,19 +15,22 @@ type parser struct {
 	loophack      bool
 	loophackStack []bool
 	ofs           int
+	sourceFile    *SourceFile
 	syntaxError   func()
 }
 
-func newParser(l *lexer) *parser {
+func newParser(src *SourceFile, l *lexer) *parser {
 	return &parser{
-		l: l,
+		l:          l,
+		sourceFile: src,
 	}
 }
 
-func (p *parser) init(l *lexer) {
+func (p *parser) init(src *SourceFile, l *lexer) {
 	p.l = l
 	p.loophack = false
 	p.loophackStack = p.loophackStack[:0]
+	p.sourceFile = src
 }
 
 func (p *parser) err(ofs int, msg string, args ...interface{}) {
@@ -158,7 +161,7 @@ func (p *parser) imports() {
 // 	IDENT
 // |	identList ',' IDENT
 func (p *parser) identList() {
-	for p.must(token.IDENT); p.opt(token.COMMA); {
+	for p.must(token.IDENT); p.opt(token.COMMA) && p.c != tokenGTGT; {
 		p.must(token.IDENT)
 	}
 }
@@ -278,7 +281,7 @@ func (p *parser) exprOpt() (isExprPresent bool) {
 
 // primaryExpr:
 // 	'(' exprOrType ')'
-// |	IDENT %prec _NotParen
+// |	IDENT genericArgsOpt %prec _NotParen
 // |	convType '(' expr commaOpt ')'
 // |	fnType lbrace stmtList '}'
 // |	literal
@@ -301,7 +304,9 @@ func (p *parser) primaryExpr() (isLabel bool) {
 		p.exprOrType()
 		p.must(token.RPAREN)
 	case token.IDENT:
-		if p.n() == token.COLON {
+		p.n()
+		p.genericArgsOpt()
+		if p.c == token.COLON {
 			return true
 		}
 	case token.FUNC:
@@ -725,9 +730,28 @@ func (p *parser) rxChanType() {
 	p.typ()
 }
 
+// typeList:
+// 	typ
+// |	typeList ',' typ
+func (p *parser) typeList() {
+	for p.typ(); p.opt(token.COMMA) && p.c != tokenGTGT; {
+		p.typ()
+	}
+}
+
+// genericArgsOpt:
+// |	"«" typeList commaOpt "»"
+func (p *parser) genericArgsOpt() {
+	if p.opt(tokenLTLT) {
+		p.typeList()
+		p.opt(token.COMMA)
+		p.must(tokenGTGT)
+	}
+}
+
 // typ:
 // 	'(' typ ')'
-// |	qualifiedIdent
+// |	qualifiedIdent genericArgsOpt
 // |	fnType
 // |	otherType
 // |	ptrType
@@ -740,6 +764,7 @@ func (p *parser) typ() {
 		p.must(token.RPAREN)
 	case token.IDENT:
 		p.qualifiedIdent()
+		p.genericArgsOpt()
 	case token.FUNC:
 		p.fnType()
 	case token.CHAN, token.INTERFACE, token.MAP, token.STRUCT, token.LBRACK:
@@ -753,11 +778,22 @@ func (p *parser) typ() {
 	}
 }
 
+//genericParamsOpt:
+//|	"«" identList "»"
+func (p *parser) genericParamsOpt() {
+	if p.opt(tokenLTLT) {
+		p.identList()
+		p.opt(token.COMMA)
+		p.must(tokenGTGT)
+	}
+}
+
 // typeSpec:
-// 	IDENT typ
+//	IDENT genericParamsOpt typ
 // |	aliasSpec
 func (p *parser) typeSpec() {
 	p.must(token.IDENT)
+	p.genericParamsOpt()
 	if p.c == tokenALIAS {
 		p.aliasSpec()
 		return
@@ -876,6 +912,8 @@ func (p *parser) paramType() {
 		case token.PERIOD:
 			p.n()
 			p.must(token.IDENT)
+		case tokenLTLT:
+			p.genericArgsOpt()
 		case token.ELLIPSIS:
 			p.n()
 			p.typ()
@@ -910,7 +948,7 @@ func (p *parser) paramTypeListCommaOptOpt() {
 // result:
 // 	%prec _NotParen
 // |	'(' paramTypeListCommaOptOpt ')'
-// |	qualifiedIdent
+// |	qualifiedIdent genericArgsOpt
 // |	fnType
 // |	otherType
 // |	ptrType
@@ -926,6 +964,7 @@ func (p *parser) result() {
 		p.must(token.RPAREN)
 	case token.IDENT:
 		p.qualifiedIdent()
+		p.genericArgsOpt()
 	case token.FUNC:
 		p.fnType()
 	case token.CHAN, token.INTERFACE, token.MAP, token.STRUCT, token.LBRACK:
@@ -1212,8 +1251,8 @@ func (p *parser) fnBody() {
 }
 
 // topLevelDeclList:
-// |	topLevelDeclList "func" '(' paramTypeListCommaOptOpt ')' IDENT '(' paramTypeListCommaOptOpt ')' result fnBody ';'
-// |	topLevelDeclList "func" IDENT '(' paramTypeListCommaOptOpt ')' result fnBody ';'
+// |	topLevelDeclList "func" '(' paramTypeListCommaOptOpt ')' IDENT genericParamsOpt '(' paramTypeListCommaOptOpt ')' result fnBody ';'
+// |	topLevelDeclList "func" IDENT genericParamsOpt '(' paramTypeListCommaOptOpt ')' result fnBody ';'
 // |	topLevelDeclList "func" aliasSpec ';'
 // |	topLevelDeclList commonDecl ';'
 func (p *parser) topLevelDeclList() {
@@ -1223,7 +1262,9 @@ func (p *parser) topLevelDeclList() {
 		case token.FUNC:
 			switch p.n() {
 			case token.IDENT:
-				switch p.n() {
+				p.n()
+				p.genericParamsOpt()
+				switch p.c {
 				case token.LPAREN:
 					p.n()
 				case tokenALIAS:
@@ -1236,7 +1277,9 @@ func (p *parser) topLevelDeclList() {
 				p.n()
 				p.paramTypeListCommaOptOpt()
 				p.must(token.RPAREN)
-				p.must2(token.IDENT, token.LPAREN)
+				p.must(token.IDENT)
+				p.genericParamsOpt()
+				p.must2(token.LPAREN)
 			default:
 				p.syntaxError()
 			}
