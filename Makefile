@@ -29,6 +29,9 @@ cpu: clean
 	go test -run @ -bench . -cpuprofile cpu.out
 	go tool pprof -lines *.test cpu.out
 
+declarationkind_string.go: enum.go
+	stringer -type DeclarationKind
+
 edit:
 	@2>/dev/null gvim -p Makefile testdata/scanner/scanner.l testdata/parser/parser.y *.go
 
@@ -62,8 +65,8 @@ mem: clean
 nuke: clean
 	go clean -i
 
-declarationkind_string.go: enum.go
-	stringer -type DeclarationKind
+scopekind_string.go: enum.go
+	stringer -type ScopeKind
 
 todo:
 	@grep -nr $(grep) ^[[:space:]]*_[[:space:]]*=[[:space:]][[:alpha:]][[:alnum:]]* * | grep -v $(ngrep) || true

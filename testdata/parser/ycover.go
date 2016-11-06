@@ -7,7 +7,7 @@ package cover
 // Cover states not visited by yacc parser when parsing GOROOT/src.
 
 import ()
-import . ""
+import . "errors"
 const()
 type ()
 type _ (_)
@@ -27,10 +27,3 @@ type _«_» _
 type _«_,» _«_»
 type _«_» _«_,»
 type _«_» _«_,_,»
-
-//TODO- when 1.8 is out
-
-const _ => _._
-func _ => _._
-type _ => _._
-var _ => _._

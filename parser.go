@@ -5,18 +5,25 @@
 package gc
 
 import (
+	"bytes"
+	"fmt"
 	"go/token"
+	"strconv"
+	"strings"
+)
+
+var (
+	buildMark = []byte("// +build")
 )
 
 type parser struct {
 	c             token.Token
-	errHandler    func(ofs int, msg string, args ...interface{})
 	l             *lexer
 	loophack      bool
 	loophackStack []bool
 	ofs           int
 	sourceFile    *SourceFile
-	syntaxError   func()
+	syntaxError   func(*parser)
 }
 
 func newParser(src *SourceFile, l *lexer) *parser {
@@ -34,12 +41,7 @@ func (p *parser) init(src *SourceFile, l *lexer) {
 }
 
 func (p *parser) err(ofs int, msg string, args ...interface{}) {
-	if p.errHandler != nil {
-		p.errHandler(ofs, msg, args...)
-		return
-	}
-
-	p.l.err(ofs, msg, args...)
+	p.sourceFile.Package.errorList.Add(p.sourceFile.pos(ofs), fmt.Sprintf(msg, args...))
 }
 
 func (p *parser) n() token.Token {
@@ -90,7 +92,7 @@ func (p *parser) skip(toks ...token.Token) {
 func (p *parser) must(tok token.Token) (ok bool) {
 	ok = true
 	if p.c != tok {
-		p.syntaxError()
+		p.syntaxError(p)
 		ok = false
 	}
 	p.n()
@@ -114,15 +116,125 @@ func (p *parser) not2(toks ...token.Token) bool {
 	return true
 }
 
+func (p *parser) strLit() string {
+	s := string(p.l.lit)
+	value, err := strconv.Unquote(s)
+	if err != nil {
+		p.err(p.ofs, "%s: %q", err, s)
+		return ""
+	}
+
+	// https://github.com/golang/go/issues/15997
+	if s[0] == '`' {
+		value = strings.Replace(value, "\r", "", -1)
+	}
+	return value
+}
+
+func (p *parser) commentHandler(ofs int, lit []byte) {
+	if p.sourceFile.build && bytes.HasPrefix(lit, buildMark) {
+		p.buildDirective(lit)
+	}
+}
+
+func (p *parser) buildDirective(b []byte) {
+	ctx := p.sourceFile.Package.ctx
+	s := string(b[len(buildMark):])
+	s = strings.Replace(s, "\t", " ", -1)
+	for _, term := range strings.Split(s, " ") { // term || term
+		if term = strings.TrimSpace(term); term == "" {
+			continue
+		}
+
+		val := true
+		for _, factor := range strings.Split(term, ",") { // factor && factor
+			if factor = strings.TrimSpace(factor); factor == "" {
+				continue
+			}
+
+			not := factor[0] == '!'
+			if not {
+				factor = strings.TrimSpace(factor[1:])
+			}
+
+			if factor == "" {
+				continue
+			}
+
+			_, ok := ctx.tags[factor]
+			if not {
+				ok = !ok
+			}
+
+			if !ok {
+				val = false
+				break
+			}
+
+		}
+		if val {
+			return
+		}
+	}
+
+	p.sourceFile.build = false
+}
+
+// ImportSpec describes an import declaration.
+type ImportSpec struct {
+	Dot        bool     // The `import . "foo/bar"` variant is used.
+	ImportPath string   // `foo/bar` from `import "foo/bar"`
+	Package    *Package // The imported package, if exists.
+	Qualifier  string   // `baz` from `import baz "foo/bar"`.
+
+	declaration
+}
+
+func newImportSpec(src *SourceFile, off int, dot bool, qualifier, importPath string) *ImportSpec {
+	return &ImportSpec{
+		Dot:         dot,
+		ImportPath:  importPath,
+		Qualifier:   qualifier,
+		declaration: newDeclaration(src, off, qualifier),
+	}
+}
+
+// ImportSpec implements Declaration.
+func (d *ImportSpec) ImportSpec() *ImportSpec { return d }
+
+// Kind implements Declaration.
+func (d *ImportSpec) Kind() DeclarationKind { return ImportDeclaration }
+
 // importSpec:
 // 	'.' STRING
 // |	IDENT STRING
 // |	STRING
 func (p *parser) importSpec() {
-	if p.c == token.IDENT || p.c == token.PERIOD {
+	var qualifier string
+	var dot bool
+	switch p.c {
+	case token.IDENT:
+		qualifier = string(p.l.lit)
+		p.n()
+	case token.PERIOD:
+		dot = true
 		p.n()
 	}
-	p.must(token.STRING)
+	switch p.c {
+	case token.STRING:
+		ofs := p.ofs
+		ip := p.strLit()
+		if !p.sourceFile.Package.ctx.ignoreImports {
+			spec := newImportSpec(p.sourceFile, p.ofs, dot, qualifier, ip)
+			spec.Package = p.sourceFile.Package.ctx.load(func() token.Position { return p.sourceFile.pos(ofs) }, ip, nil, p.sourceFile.Package.errorList)
+			p.sourceFile.ImportSpecs = append(p.sourceFile.ImportSpecs, spec)
+		} else {
+			//TODO p.err(...)
+		}
+		p.n()
+	default:
+		p.syntaxError(p)
+	}
 }
 
 // importSpecList:
@@ -145,7 +257,7 @@ func (p *parser) imports() {
 			if !p.opt(token.RPAREN) {
 				p.importSpecList()
 				if p.c == token.COMMA {
-					p.syntaxError()
+					p.syntaxError(p)
 					p.skip(token.RPAREN)
 				}
 				p.must(token.RPAREN)
@@ -197,7 +309,7 @@ func (p *parser) keyValList() {
 		p.keyVal()
 	}
 	if p.c == token.SEMICOLON {
-		p.syntaxError()
+		p.syntaxError(p)
 		p.n()
 	}
 }
@@ -255,7 +367,7 @@ more:
 			}
 		}
 	default:
-		p.syntaxError()
+		p.syntaxError(p)
 	}
 }
 
@@ -326,7 +438,7 @@ func (p *parser) primaryExpr() (isLabel bool) {
 			p.opt(token.COMMA)
 			p.must(token.RPAREN)
 		default:
-			p.syntaxError()
+			p.syntaxError(p)
 		}
 	case token.INT, token.FLOAT, token.IMAG, token.CHAR, token.STRING:
 		p.n()
@@ -347,10 +459,10 @@ func (p *parser) primaryExpr() (isLabel bool) {
 			p.loophack = fix
 			p.must(token.RBRACE)
 		default:
-			p.syntaxError()
+			p.syntaxError(p)
 		}
 	default:
-		p.syntaxError()
+		p.syntaxError(p)
 	}
 	p.primaryExpr2()
 	return false
@@ -379,13 +491,13 @@ func (p *parser) primaryExpr2() {
 				}
 				p.must(token.RPAREN)
 			default:
-				p.syntaxError()
+				p.syntaxError(p)
 				p.n()
 			}
 		case token.LBRACK:
 			p.n()
 			if !p.exprOpt() && p.c == token.RBRACK {
-				p.syntaxError()
+				p.syntaxError(p)
 				break
 			}
 
@@ -492,8 +604,7 @@ func (p *parser) aliasSpec() {
 }
 
 // constSpec:
-// 	aliasSpec
-// |	identList
+// 	identList
 // |	identList '=' exprList
 // |	identList typ
 // |	identList typ '=' exprList
@@ -506,9 +617,6 @@ func (p *parser) constSpec() {
 		p.n()
 		p.exprList()
 		return
-	case tokenALIAS:
-		p.aliasSpec()
-		return
 	}
 
 	p.typ()
@@ -516,7 +624,7 @@ func (p *parser) constSpec() {
 		p.exprList()
 	}
 	if p.not2(token.SEMICOLON, token.RPAREN) {
-		p.syntaxError()
+		p.syntaxError(p)
 		p.skip(token.SEMICOLON, token.RPAREN)
 	}
 }
@@ -555,14 +663,14 @@ func (p *parser) fieldDecl() {
 		}
 	case token.MUL:
 		if p.n() == token.LPAREN {
-			p.syntaxError()
+			p.syntaxError(p)
 			p.skip(token.SEMICOLON, token.RBRACE)
 			return
 		}
 
 		p.qualifiedIdent()
 	default:
-		p.syntaxError()
+		p.syntaxError(p)
 		p.skip(token.SEMICOLON, token.RBRACE)
 		return
 	}
@@ -599,7 +707,7 @@ func (p *parser) interfaceDecl() {
 	case token.SEMICOLON, token.RBRACE:
 		// nop
 	default:
-		p.syntaxError()
+		p.syntaxError(p)
 		p.skip(token.SEMICOLON, token.RBRACE)
 	}
 }
@@ -660,7 +768,7 @@ func (p *parser) otherType() {
 			p.loophack = fix
 			p.must(token.RBRACE)
 		default:
-			p.syntaxError()
+			p.syntaxError(p)
 		}
 	case token.MAP:
 		p.n()
@@ -680,7 +788,7 @@ func (p *parser) otherType() {
 			p.loophack = fix
 			p.must(token.RBRACE)
 		default:
-			p.syntaxError()
+			p.syntaxError(p)
 		}
 	case token.LBRACK:
 		p.n()
@@ -690,7 +798,7 @@ func (p *parser) otherType() {
 		p.must(token.RBRACK)
 		p.typ()
 	default:
-		p.syntaxError()
+		p.syntaxError(p)
 	}
 }
 
@@ -774,7 +882,7 @@ func (p *parser) typ() {
 	case token.ARROW:
 		p.rxChanType()
 	default:
-		p.syntaxError()
+		p.syntaxError(p)
 	}
 }
 
@@ -790,15 +898,9 @@ func (p *parser) genericParamsOpt() {
 
 // typeSpec:
 //	IDENT genericParamsOpt typ
-// |	aliasSpec
 func (p *parser) typeSpec() {
 	p.must(token.IDENT)
 	p.genericParamsOpt()
-	if p.c == tokenALIAS {
-		p.aliasSpec()
-		return
-	}
-
 	p.typ()
 }
 
@@ -812,22 +914,18 @@ func (p *parser) typeSpecList() {
 }
 
 // varSpec:
-// 	aliasSpec
-// |	identList '=' exprList
+// 	identList '=' exprList
 // |	identList typ
 // |	identList typ '=' exprList
 func (p *parser) varSpec() {
 	p.identList()
 	switch p.c {
-	case tokenALIAS:
-		p.aliasSpec()
-		return
 	case token.ASSIGN:
 		p.n()
 		p.exprList()
 		return
 	case token.PERIOD:
-		p.syntaxError()
+		p.syntaxError(p)
 		p.skip(token.SEMICOLON, token.RPAREN)
 		return
 	}
@@ -974,7 +1072,7 @@ func (p *parser) result() {
 	case token.ARROW:
 		p.rxChanType()
 	default:
-		p.syntaxError()
+		p.syntaxError(p)
 	}
 }
 
@@ -1013,7 +1111,7 @@ more:
 		return false, false
 	case token.COMMA:
 		if !first {
-			p.syntaxError()
+			p.syntaxError(p)
 			break
 		}
 
@@ -1052,7 +1150,7 @@ func (p *parser) ifHeader() {
 		p.simpleStmtOpt(false)
 	}
 	if p.c == token.SEMICOLON {
-		p.syntaxError()
+		p.syntaxError(p)
 		p.n()
 	}
 }
@@ -1089,9 +1187,9 @@ func (p *parser) compoundStmt() {
 		p.stmtList()
 		p.must(token.RBRACE)
 	case token.SEMICOLON:
-		p.syntaxError()
+		p.syntaxError(p)
 	default:
-		p.syntaxError()
+		p.syntaxError(p)
 		p.n()
 	}
 }
@@ -1117,11 +1215,11 @@ func (p *parser) caseBlockList() {
 			p.must(token.COLON)
 			p.stmtList()
 		case token.IF:
-			p.syntaxError()
+			p.syntaxError(p)
 			p.skip(token.COLON)
 		default:
 			if p.c != token.RBRACE {
-				p.syntaxError()
+				p.syntaxError(p)
 				p.skip(token.RBRACE)
 			}
 			return
@@ -1183,7 +1281,7 @@ more:
 			}
 		}
 		if p.c == token.SEMICOLON {
-			p.syntaxError()
+			p.syntaxError(p)
 			p.skip(tokenBODY)
 		}
 		p.loopBody()
@@ -1202,7 +1300,7 @@ more:
 		if p.not2(token.SEMICOLON, token.RBRACE) {
 			p.exprList()
 			if p.not2(token.SEMICOLON, token.RBRACE) {
-				p.syntaxError()
+				p.syntaxError(p)
 				p.skip(token.SEMICOLON, token.RBRACE)
 			}
 		}
@@ -1227,7 +1325,7 @@ more:
 		}
 	}
 	if p.c == token.COLON {
-		p.syntaxError()
+		p.syntaxError(p)
 		p.n()
 	}
 }
@@ -1253,11 +1351,13 @@ func (p *parser) fnBody() {
 // topLevelDeclList:
 // |	topLevelDeclList "func" '(' paramTypeListCommaOptOpt ')' IDENT genericParamsOpt '(' paramTypeListCommaOptOpt ')' result fnBody ';'
 // |	topLevelDeclList "func" IDENT genericParamsOpt '(' paramTypeListCommaOptOpt ')' result fnBody ';'
-// |	topLevelDeclList "func" aliasSpec ';'
 // |	topLevelDeclList commonDecl ';'
 func (p *parser) topLevelDeclList() {
+	for _, v := range p.sourceFile.ImportSpecs {
+		v.Package.wait()
+		//TODO declare import qualifiers.
+	}
 	for p.c != token.EOF {
-	out:
 		switch p.c {
 		case token.FUNC:
 			switch p.n() {
@@ -1267,11 +1367,8 @@ func (p *parser) topLevelDeclList() {
 				switch p.c {
 				case token.LPAREN:
 					p.n()
-				case tokenALIAS:
-					p.aliasSpec()
-					break out
 				default:
-					p.syntaxError()
+					p.syntaxError(p)
 				}
 			case token.LPAREN:
 				p.n()
@@ -1281,12 +1378,12 @@ func (p *parser) topLevelDeclList() {
 				p.genericParamsOpt()
 				p.must2(token.LPAREN)
 			default:
-				p.syntaxError()
+				p.syntaxError(p)
 			}
 
 			p.paramTypeListCommaOptOpt()
 			if p.c == token.SEMICOLON {
-				p.syntaxError()
+				p.syntaxError(p)
 				p.skip(token.RPAREN)
 			}
 			p.must(token.RPAREN)
@@ -1295,7 +1392,7 @@ func (p *parser) topLevelDeclList() {
 		case token.CONST, token.TYPE, token.VAR:
 			p.commonDecl()
 		default:
-			p.syntaxError()
+			p.syntaxError(p)
 		}
 		p.must(token.SEMICOLON)
 	}
@@ -1304,8 +1401,11 @@ func (p *parser) topLevelDeclList() {
 // file:
 // 	"package" IDENT ';' imports topLevelDeclList
 func (p *parser) file() {
+	if p.syntaxError == nil {
+		p.syntaxError = func(*parser) { p.err(p.ofs, "syntax error") }
+	}
 	p.n()
-	if p.must2(token.PACKAGE, token.IDENT, token.SEMICOLON) {
+	if p.must2(token.PACKAGE, token.IDENT, token.SEMICOLON) && p.sourceFile.build {
 		p.imports()
 		p.topLevelDeclList()
 	}

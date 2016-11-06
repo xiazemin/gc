@@ -4,7 +4,7 @@
 
 package gc
 
-// DeclarationKind describes a Declaration's kind.
+// DeclarationKind describes a Declaration's Kind.
 type DeclarationKind int
 
 // Values of DeclarationKind.
@@ -15,4 +15,15 @@ const (
 	MethodDeclaration
 	TypeDeclaration
 	VarDeclaration
+)
+
+// ScopeKind describe a Scope's Kind.
+type ScopeKind int
+
+// Values of ScopeKind.
+const (
+	UniverseScope ScopeKind = iota
+	PackageScope
+	FileScope
+	BlockScope
 )

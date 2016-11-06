@@ -10,6 +10,7 @@ import (
 	"flag"
 	"fmt"
 	"go/build"
+	goparser "go/parser"
 	"go/scanner"
 	"go/token"
 	"io/ioutil"
@@ -21,6 +22,7 @@ import (
 	"runtime/debug"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/cznic/lex"
@@ -45,7 +47,12 @@ func caller(s string, va ...interface{}) {
 	os.Stderr.Sync()
 }
 
+var dbgMu sync.Mutex
+
 func dbg(s string, va ...interface{}) {
+	dbgMu.Lock()
+	defer dbgMu.Unlock()
+
 	if s == "" {
 		s = strings.Repeat("%v ", len(va))
 	}
@@ -67,9 +74,24 @@ func use(...interface{}) {}
 
 func init() {
 	use(caller, dbg, TODO, (*parser).todo, stack) //TODOOK
-	if !strings.HasPrefix(runtime.Version(), "go1.7") {
-		panic("incompatible Go version, must update code for token.ALIAS")
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		panic("internal error")
 	}
+
+	gopaths := filepath.SplitList(os.Getenv("GOPATH"))
+	for _, v := range gopaths {
+		gp := filepath.Join(v, "src")
+		path, err := filepath.Rel(gp, file)
+		if err != nil {
+			continue
+		}
+
+		selfImportPath = filepath.Dir(path)
+		return
+	}
+
+	panic("internal error")
 }
 
 // ============================================================================
@@ -92,6 +114,8 @@ var (
 	_   = flag.String("out", "", "where to put y.output") //TODOOK
 	oN  = flag.Int("N", -1, "")
 	oRE = flag.String("re", "", "regexp")
+
+	selfImportPath string
 
 	errCheckCompileDir  = []byte("// compiledir")
 	errCheckDisbled     = []byte("////")
@@ -163,7 +187,7 @@ var (
 
 		m := make(map[token.Token]*y.Symbol, len(p.Syms))
 		for k, v := range p.Syms {
-			if !v.IsTerminal || k == "BODY" || k == "ALIAS" || k[0] == '_' {
+			if !v.IsTerminal || k == "BODY" || k[0] == '_' {
 				continue
 			}
 
@@ -193,7 +217,6 @@ var (
 		}
 		m[token.EOF] = p.Syms["$end"]
 		m[tokenBODY] = p.Syms["BODY"]
-		m[tokenALIAS] = p.Syms["ALIAS"]
 		var t []*y.Symbol
 		for _, v := range p.Syms {
 			if v.IsTerminal {
@@ -224,7 +247,9 @@ var (
 		return m
 	}()
 
-	gorootTestFiles = func() (r []string) {
+	gorootPackages []*Package
+
+	gorootFiles = func() (r []string) {
 		if err := filepath.Walk(filepath.Join(runtime.GOROOT(), "src"), func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
@@ -249,9 +274,13 @@ var (
 				return err
 			}
 
+			pkg := newPackage(nil, p.ImportPath, p.Name, nil)
 			for _, v := range p.GoFiles {
-				r = append(r, filepath.Join(p.Dir, v))
+				path := filepath.Join(p.Dir, v)
+				r = append(r, path)
+				pkg.SourceFiles = append(pkg.SourceFiles, newSourceFile(pkg, path, nil, nil))
 			}
+			gorootPackages = append(gorootPackages, pkg)
 			for _, v := range p.TestGoFiles {
 				r = append(r, filepath.Join(p.Dir, v))
 			}
@@ -260,6 +289,7 @@ var (
 			panic(err)
 		}
 
+		gorootPackages = gorootPackages[:len(gorootPackages):len(gorootPackages)]
 		return r[:len(r):len(r)]
 	}()
 
@@ -270,6 +300,10 @@ var (
 			}
 
 			if info.IsDir() {
+				if strings.HasSuffix(path, ".dir") { //TODO-
+					return filepath.SkipDir
+				}
+
 				return nil
 			}
 
@@ -287,13 +321,21 @@ var (
 		return r[:len(r):len(r)]
 	}()
 
-	stdTestFiles = func() (r []string) {
+	stdLibPackages []*Package
+
+	stdLibFiles = func() (r []string) {
 		cmd := filepath.Join(runtime.GOROOT(), "src", "cmd")
-		for _, v := range gorootTestFiles {
+		for _, v := range gorootFiles {
 			if !strings.Contains(v, cmd) && !strings.HasSuffix(v, "_test.go") {
 				r = append(r, v)
 			}
 		}
+		for _, v := range gorootPackages {
+			if !strings.HasPrefix(v.SourceFiles[0].Path, cmd) {
+				stdLibPackages = append(stdLibPackages, v)
+			}
+		}
+		stdLibPackages = stdLibPackages[:len(stdLibPackages):len(stdLibPackages)]
 		return r[:len(r):len(r)]
 	}()
 )
@@ -416,10 +458,6 @@ func testScannerStates(t *testing.T) {
 				l.errorCount = 0
 				ss.ErrorCount = 0
 				ofs, tok := l.scan()
-				if tok == tokenALIAS && strings.HasPrefix(runtime.Version(), "go1.7") { //TODO- when 1.8 is out
-					break
-				}
-
 				pos := tf.Pos(ofs)
 				lit := string(l.lit)
 				pos2, tok2, lit2 := ss.Scan()
@@ -671,10 +709,6 @@ outer:
 			if gt == tokenBOM {
 				gt = token.ILLEGAL
 			}
-			if gt == tokenALIAS && strings.HasPrefix(runtime.Version(), "go1.7") { //TODO- when 1.8 is out
-				break
-			}
-
 			toks++
 			glit := string(l.lit)
 			pos, et, lit := s.Scan()
@@ -748,113 +782,38 @@ outer:
 func TestScanner(t *testing.T) {
 	_ = t.Run("States", testScannerStates) && //TODOOK
 		t.Run("Bugs", testScannerBugs) &&
-		t.Run("GOROOT", func(t *testing.T) { testScanner(t, gorootTestFiles) }) &&
+		t.Run("GOROOT", func(t *testing.T) { testScanner(t, gorootFiles) }) &&
 		t.Run("Errchk", func(t *testing.T) { testScanner(t, errchkFiles) })
 }
 
 func BenchmarkScanner(b *testing.B) {
-	l := newLexer(nil)
-
-	b.Run("Shootout", func(b *testing.B) {
-		src, err := ioutil.ReadFile(filepath.Join(runtime.GOROOT(), "src", "go", "scanner", "scanner.go"))
-		if err != nil {
-			b.Fatal(err)
-		}
-
-		b.SetBytes(int64(len(src)))
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			l.init(src)
-			for {
-				_, tok := l.scan()
-				if tok == token.EOF {
-					break
-				}
-			}
-		}
-	})
-
-	b.Run("Std", func(b *testing.B) {
+	b.Run("StdGo", func(b *testing.B) {
+		c := make(chan error, len(stdLibFiles))
+		fs := token.NewFileSet()
 		b.ResetTimer()
 		var sum int
 		for i := 0; i < b.N; i++ {
 			sum = 0
-			for _, v := range stdTestFiles {
-				src, err := ioutil.ReadFile(v)
-				if err != nil {
-					b.Fatal(err)
-				}
-
-				sum += len(src)
-				l.init(src)
-				for {
-					_, tok := l.scan()
-					if tok == token.EOF {
-						break
-					}
-				}
-			}
-		}
-		b.SetBytes(int64(sum))
-	})
-
-	b.Run("StdMMap", func(b *testing.B) {
-		b.ResetTimer()
-		var sum int
-		for i := 0; i < b.N; i++ {
-			sum = 0
-			for _, v := range stdTestFiles {
-				f0, err := os.Open(v)
-				if err != nil {
-					b.Fatal(err)
-				}
-
-				src, err := mmap.Map(f0, 0, 0)
-				if err != nil {
-					f0.Close()
-					b.Fatal(err)
-				}
-
-				sum += len(src)
-				l.init(src)
-				for {
-					_, tok := l.scan()
-					if tok == token.EOF {
-						break
-					}
-				}
-				src.Unmap()
-				f0.Close()
-			}
-		}
-		b.SetBytes(int64(sum))
-	})
-
-	b.Run("StdParalel", func(b *testing.B) {
-		c := make(chan error, len(stdTestFiles))
-		b.ResetTimer()
-		var sum int
-		for i := 0; i < b.N; i++ {
-			sum = 0
-			for _, v := range stdTestFiles {
+			for _, v := range stdLibFiles {
 				go func(v string) {
 					src, err := ioutil.ReadFile(v)
 					if err != nil {
 						c <- err
+						return
 					}
 
 					sum += len(src)
-					l := newLexer(src)
+					var s scanner.Scanner
+					s.Init(fs.AddFile(v, -1, len(src)), src, nil, 0)
 					for {
-						_, tok := l.scan()
-						if tok == token.EOF {
+						if _, tok, _ := s.Scan(); tok == token.EOF {
 							break
 						}
 					}
 					c <- nil
 				}(v)
 			}
-			for range stdTestFiles {
+			for range stdLibFiles {
 				if err := <-c; err != nil {
 					b.Fatal(err)
 				}
@@ -863,17 +822,18 @@ func BenchmarkScanner(b *testing.B) {
 		b.SetBytes(int64(sum))
 	})
 
-	b.Run("StdParalelMMap", func(b *testing.B) {
-		c := make(chan error, len(stdTestFiles))
+	b.Run("Std", func(b *testing.B) {
+		c := make(chan error, len(stdLibFiles))
 		b.ResetTimer()
 		var sum int
 		for i := 0; i < b.N; i++ {
 			sum = 0
-			for _, v := range stdTestFiles {
+			for _, v := range stdLibFiles {
 				go func(v string) {
 					f0, err := os.Open(v)
 					if err != nil {
 						c <- err
+						return
 					}
 
 					defer f0.Close()
@@ -881,6 +841,7 @@ func BenchmarkScanner(b *testing.B) {
 					src, err := mmap.Map(f0, 0, 0)
 					if err != nil {
 						c <- err
+						return
 					}
 
 					defer src.Unmap()
@@ -888,15 +849,14 @@ func BenchmarkScanner(b *testing.B) {
 					sum += len(src)
 					l := newLexer(src)
 					for {
-						_, tok := l.scan()
-						if tok == token.EOF {
+						if _, tok := l.scan(); tok == token.EOF {
 							break
 						}
 					}
 					c <- nil
 				}(v)
 			}
-			for range stdTestFiles {
+			for range stdLibFiles {
 				if err := <-c; err != nil {
 					b.Fatal(err)
 				}
@@ -907,97 +867,27 @@ func BenchmarkScanner(b *testing.B) {
 }
 
 func BenchmarkParser(b *testing.B) {
-	l := newLexer(nil)
-	sf := newSourceFile(nil)
-	p := newParser(nil, l)
-
-	b.Run("Shootout", func(b *testing.B) {
-		src, err := ioutil.ReadFile(filepath.Join(runtime.GOROOT(), "src", "go", "parser", "parser.go"))
-		if err != nil {
-			b.Fatal(err)
-		}
-
-		b.SetBytes(int64(len(src)))
+	var sum int
+	b.Run("StdGo", func(b *testing.B) {
+		c := make(chan error, len(stdLibFiles))
+		fs := token.NewFileSet()
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			l.init(src)
-			sf.init(nil)
-			p.init(sf, l)
-			p.file()
-		}
-	})
-
-	b.Run("Std", func(b *testing.B) {
-		b.ResetTimer()
-		var sum int
 		for i := 0; i < b.N; i++ {
 			sum = 0
-			for _, v := range stdTestFiles {
-				src, err := ioutil.ReadFile(v)
-				if err != nil {
-					b.Fatal(err)
-				}
-
-				sum += len(src)
-				l.init(src)
-				sf.init(nil)
-				p.init(sf, l)
-				p.file()
-			}
-		}
-		b.SetBytes(int64(sum))
-	})
-
-	b.Run("StdMMap", func(b *testing.B) {
-		b.ResetTimer()
-		var sum int
-		for i := 0; i < b.N; i++ {
-			sum = 0
-			for _, v := range stdTestFiles {
-				f0, err := os.Open(v)
-				if err != nil {
-					b.Fatal(err)
-				}
-
-				src, err := mmap.Map(f0, 0, 0)
-				if err != nil {
-					f0.Close()
-					b.Fatal(err)
-				}
-
-				sum += len(src)
-				l.init(src)
-				sf.init(nil)
-				p.init(sf, l)
-				p.file()
-				src.Unmap()
-				f0.Close()
-			}
-		}
-		b.SetBytes(int64(sum))
-	})
-
-	b.Run("StdParalel", func(b *testing.B) {
-		c := make(chan error, len(stdTestFiles))
-		b.ResetTimer()
-		var sum int
-		for i := 0; i < b.N; i++ {
-			sum = 0
-			for _, v := range stdTestFiles {
+			for _, v := range stdLibFiles {
 				go func(v string) {
 					src, err := ioutil.ReadFile(v)
 					if err != nil {
 						c <- err
+						return
 					}
 
 					sum += len(src)
-					l := newLexer(src)
-					p := newParser(newSourceFile(nil), l)
-					p.file()
-					c <- nil
+					_, err = goparser.ParseFile(fs, v, src, 0)
+					c <- err
 				}(v)
 			}
-			for range stdTestFiles {
+			for range stdLibFiles {
 				if err := <-c; err != nil {
 					b.Fatal(err)
 				}
@@ -1006,42 +896,31 @@ func BenchmarkParser(b *testing.B) {
 		b.SetBytes(int64(sum))
 	})
 
-	b.Run("StdParalelMMap", func(b *testing.B) {
-		c := make(chan error, len(stdTestFiles))
+	b.Run("Std", func(b *testing.B) {
+		a := make([]*Package, len(stdLibPackages))
+		errorList := newErrorList(1)
 		b.ResetTimer()
-		var sum int
 		for i := 0; i < b.N; i++ {
-			sum = 0
-			for _, v := range stdTestFiles {
-				go func(v string) {
-					f0, err := os.Open(v)
-					if err != nil {
-						c <- err
-					}
-
-					defer f0.Close()
-
-					src, err := mmap.Map(f0, 0, 0)
-					if err != nil {
-						c <- err
-					}
-
-					defer src.Unmap()
-
-					sum += len(src)
-					l := newLexer(src)
-					p := newParser(newSourceFile(nil), l)
-					p.file()
-					c <- nil
-				}(v)
+			b.StopTimer()
+			ctx, err := newTestContext()
+			if err != nil {
+				b.Fatal(err)
 			}
-			for range stdTestFiles {
-				if err := <-c; err != nil {
-					b.Fatal(err)
-				}
+
+			b.StartTimer()
+			for i, v := range stdLibPackages {
+				a[i] = ctx.load(noPos, v.ImportPath, nil, errorList)
+			}
+			for _, v := range a {
+				v.wait()
+			}
+			if err := errorList.error(); err != nil {
+				b.Fatal(err)
 			}
 		}
-		b.SetBytes(int64(sum))
+		if sum != 0 {
+			b.SetBytes(int64(sum))
+		}
 	})
 }
 
@@ -1386,64 +1265,50 @@ func (p *parser) todo() {
 	p.err(p.ofs, "%q=%q: TODO %v:%v", p.c, p.l.lit, fn, fl) //TODOOK
 }
 
-func (p *parser) testSyntaxError() {
-	dbg("%s", stack())
-	switch p.c {
-	case token.EOF:
-		p.err(p.ofs, "%q=%q: syntax error at EOF", p.c, p.l.lit)
-	default:
-		lit := p.l.lit
-		if len(lit) != 0 && lit[0] == '\n' {
-			p.err(p.ofs, "%q=%q: syntax error at EOL", p.c, lit)
-			break
-		}
-
-		p.err(p.ofs, "%q=%q: syntax error", p.c, lit)
-	}
+func testTags() []string {
+	return []string{"go1.1", "go1.2", "go1.3", "go1.4", "go1.5", "go1.6", "go1.7"} //TODO update when 1.8 is out
 }
 
-func testParser(t *testing.T, files []string) {
-	var p *parser
-	var ifile int
-	var path string
-
-	defer func() {
-		if err := recover(); err != nil {
-			t.Errorf("\n====\n%s%v (file %d/%d)", p.fail(path), err, ifile+1, len(files))
-		}
-	}()
-
-	fs := token.NewFileSet()
-	var f *token.File
-	l := newLexer(nil)
-	l.errHandler = func(ofs int, msg string, args ...interface{}) {
-		switch {
-		case len(args) == 0:
-			panic(fmt.Errorf("%s: "+msg, f.Position(f.Pos(ofs))))
-		default:
-			panic(fmt.Errorf("%s: "+msg, append([]interface{}{f.Position(f.Pos(ofs))}, args...)...))
-		}
+func newTestContext() (*Context, error) {
+	a := strings.Split(os.Getenv("GOPATH"), string(os.PathListSeparator)) //TODO Handle unset $GOPATH in go1.8. (?)
+	for i, v := range a {
+		a[i] = filepath.Join(v, "src")
 	}
-	for ifile, path = range files {
-		src, err := ioutil.ReadFile(path)
-		if err != nil {
+	return NewContext(runtime.GOOS, runtime.GOARCH, testTags(), append([]string{filepath.Join(runtime.GOROOT(), "src")}, a...))
+}
+
+func testParser(t *testing.T, packages []*Package) {
+	ctx, err := newTestContext()
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	errorList := newErrorList(0)
+	for _, v := range packages {
+		ctx.load(
+			noPos,
+			v.ImportPath,
+			func(p *parser) {
+				p.err(p.ofs, "syntax error\n----\n%s", p.fail(p.sourceFile.Path))
+			},
+			errorList,
+		).wait()
+		if err := errorList.error(); err != nil {
 			t.Fatal(err)
 		}
-
-		f = fs.AddFile(path, -1, len(src))
-		f.SetLinesForContent(src)
-		l.init(src)
-		p = newParser(newSourceFile(nil), l)
-		p.syntaxError = p.testSyntaxError
-		p.file()
 	}
 }
 
 func testParserRejectFS(t *testing.T) {
+	ctx, err := newTestContext()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx.ignoreImports = true
 	yp := newYParser(nil, nil)
 	l := newLexer(nil)
-	sf := newSourceFile(nil)
-	p := newParser(nil, l)
 	for state, s := range yp0.States {
 		syms, _ := s.Syms0()
 		var a []string
@@ -1463,10 +1328,11 @@ func testParserRejectFS(t *testing.T) {
 
 			s := s0 + yp.sym2str(sym) + "@"
 			l.init([]byte(s))
-			sf.init(nil)
-			p.init(sf, l)
+			pkg := newPackage(ctx, "", "", newErrorList(-1))
+			sf := newSourceFile(pkg, "", nil, nil)
+			p := newParser(sf, l)
 			ofs := -1
-			p.syntaxError = func() {
+			p.syntaxError = func(*parser) {
 				if ofs < 0 {
 					ofs = p.ofs
 				}
@@ -1607,33 +1473,21 @@ outer:
 	}
 }
 
-// Verify no syntax error reported for lines w/o the magic [GC_]ERROR comments.
+// Verify no syntax error are reported for lines w/o the magic [GC_]ERROR comments.
 func testParserErrchk(t *testing.T) {
+	ctx, err := newTestContext()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	var (
 		checks errchks
 		errors scanner.ErrorList
-		f      *token.File
 		fs     = token.NewFileSet()
 		l      = newLexer(nil)
-		p      = newParser(nil, l)
-		sf     = newSourceFile(nil)
 	)
 
 	l.commentHandler = checks.comment
-	p.syntaxError = func() {
-		//dbg("\n==== %s: %q=%q %v/%v\n%s", f.Position(f.Pos(p.ofs)), p.c, p.l.lit, p.l.ofs, len(p.l.src), stack())
-		// Whitelist cases like
-		//	testdata/errchk/gc/syntax/semi1.go:14:2: [FAIL errorcheck: extra error] syntax error, lookahead "EOF"=""
-		if p.c == token.EOF || p.l.ofs+1 >= len(p.l.src)-1 {
-			return
-		}
-
-		errors.Add(f.Position(f.Pos(p.ofs)), fmt.Sprintf("syntax error, lookahead %q=%q, p.l.ofs %d/%d", p.c, p.l.lit, p.l.ofs, len(p.l.src)))
-		if i := bytes.Index(p.l.lit, errCheckMark1); p.c == token.CHAR && i > 0 {
-			l.commentHandler(p.ofs+i, p.l.lit[i:])
-		}
-	}
-
 	for _, fn := range errchkFiles {
 		src, err := ioutil.ReadFile(fn)
 		if err != nil {
@@ -1644,12 +1498,25 @@ func testParserErrchk(t *testing.T) {
 			continue
 		}
 
-		//dbg("", fn)
-		f = fs.AddFile(fn, -1, len(src))
+		f := fs.AddFile(fn, -1, len(src))
 		f.SetLinesForContent(src)
 		l.init(src)
-		sf.init(nil)
-		p.init(sf, l)
+		pkg := newPackage(ctx, "", "", newErrorList(-1))
+		sf := newSourceFile(pkg, fn, nil, nil)
+		p := newParser(sf, l)
+		p.syntaxError = func(*parser) {
+			//dbg("\n==== %s: %q=%q %v/%v\n%s", f.Position(f.Pos(p.ofs)), p.c, p.l.lit, p.l.ofs, len(p.l.src), stack())
+			// Whitelist cases like
+			//	testdata/errchk/gc/syntax/semi1.go:14:2: [FAIL errorcheck: extra error] syntax error, lookahead "EOF"=""
+			if p.c == token.EOF || p.l.ofs+1 >= len(p.l.src)-1 {
+				return
+			}
+
+			errors.Add(f.Position(f.Pos(p.ofs)), fmt.Sprintf("syntax error, lookahead %q=%q, p.l.ofs %d/%d", p.c, p.l.lit, p.l.ofs, len(p.l.src)))
+			if i := bytes.Index(p.l.lit, errCheckMark1); p.c == token.CHAR && i > 0 {
+				l.commentHandler(p.ofs+i, p.l.lit[i:])
+			}
+		}
 		errors = errors[:0]
 		checks = checks[:0]
 		p.file()
@@ -1661,9 +1528,10 @@ func testParserErrchk(t *testing.T) {
 }
 
 func TestParser(t *testing.T) {
-	cover := append(gorootTestFiles, yaccCover)
+	cover := append(gorootFiles, yaccCover)
+	coverPackages := append(gorootPackages, newPackage(nil, filepath.Join(selfImportPath, filepath.Dir(yaccCover)), "", nil))
 	_ = t.Run("Yacc", func(t *testing.T) { testParserYacc(t, cover) }) && //TODOOK
-		t.Run("GOROOT", func(t *testing.T) { testParser(t, cover) }) &&
+		t.Run("GOROOT", func(t *testing.T) { testParser(t, coverPackages) }) &&
 		t.Run("RejectFollowSet", testParserRejectFS) &&
 		t.Run("Errchk", testParserErrchk)
 }

@@ -17,7 +17,6 @@
 	STRING
 
 	ADD_ASSIGN	"+="
-	ALIAS		"=>"
 	AND_ASSIGN	"&="
 	AND_NOT		"&^"
 	AND_NOT_ASSIGN	"&^="
@@ -112,7 +111,6 @@ importSpec:
 topLevelDeclList:
 |	topLevelDeclList "func" '(' paramTypeListCommaOptOpt ')' IDENT genericParamsOpt '(' paramTypeListCommaOptOpt ')' result fnBody ';'
 |	topLevelDeclList "func" IDENT genericParamsOpt '(' paramTypeListCommaOptOpt ')' result fnBody ';'
-|	topLevelDeclList "func" aliasSpec ';'
 |	topLevelDeclList commonDecl ';'
 
 commonDecl:
@@ -128,17 +126,12 @@ commonDecl:
 |	"var" varSpec
 
 varSpec:
-	aliasSpec
-|	identList '=' exprList
+	identList '=' exprList
 |	identList typ
 |	identList typ '=' exprList
 
-aliasSpec:
-	IDENT "=>" IDENT '.' IDENT
-
 constSpec:
-	aliasSpec
-|	identList
+	identList
 |	identList '=' exprList
 |	identList typ
 |	identList typ '=' exprList
@@ -151,7 +144,6 @@ genericParamsOpt:
 
 typeSpec:
 	IDENT genericParamsOpt typ
-|	aliasSpec
 
 simpleStmt:
 	expr

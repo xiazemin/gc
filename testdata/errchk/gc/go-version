@@ -1,9 +1,11 @@
-commit 2481481ff798636907376bfdf7e8c7558b8b930e
-Author: Alexander Morozov <lk4d4math@gmail.com>
-Date:   Tue Oct 25 14:37:54 2016 -0700
+commit 2b445c76453ee79d02ea50f50f619d8f7250fa87
+Author: Robert Griesemer <gri@golang.org>
+Date:   Sat Nov 5 13:14:23 2016 -0700
 
-    runtime: fix comments in time.go
+    go/constant: document that BinaryOp doesn't handle comparisons or shifts
     
-    Change-Id: I5c501f598f41241e6d7b21d98a126827a3c3ad9a
-    Reviewed-on: https://go-review.googlesource.com/32018
-    Reviewed-by: Ian Lance Taylor <iant@golang.org>
+    Fixes #17797.
+    
+    Change-Id: I544df81c4bcf3cbd36a793be40050f14f9a9974f
+    Reviewed-on: https://go-review.googlesource.com/32761
+    Reviewed-by: Dominik Honnef <dominik@honnef.co>

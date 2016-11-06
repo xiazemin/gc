@@ -4,4 +4,5 @@
 
 //go:generate go run generate.go
 
+// Package gc is a Go compiler front end. Work in progess.
 package gc

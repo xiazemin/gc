@@ -60,11 +60,12 @@ string_lit		{raw_string_lit}|{interpreted_string_lit}
 "<<="
 "<="
 "=="
-"=>"
 ">="
 ">>"
 ">>="
 "^="
+"|="
+"||"
 "break"
 "case"
 "chan"
@@ -90,8 +91,6 @@ string_lit		{raw_string_lit}|{interpreted_string_lit}
 "switch"
 "type"
 "var"
-"|="
-"||"
 {float_lit}
 {identifier}
 {imaginary_lit}

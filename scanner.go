@@ -31,7 +31,6 @@ const (
 	tokenGTGT // »
 	tokenBODY
 	tokenBOM
-	tokenALIAS //TODO => token.ALIAS for 1.8
 )
 
 var (
@@ -622,13 +621,9 @@ skip:
 
 		return ofs, token.LSS
 	case '=':
-		switch l.n() {
-		case '=':
+		if l.n() == '=' {
 			l.n()
 			return ofs, token.EQL
-		case '>':
-			l.n()
-			return ofs, tokenALIAS
 		}
 
 		return ofs, token.ASSIGN
